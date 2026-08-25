@@ -1,9 +1,9 @@
 import queue
 import threading
-import time
 from pathlib import Path
 
-from app.database import updatePhotoStatus
+from app.database import deleteFacesForPhoto, saveFace, updatePhotoStatus
+from app.face_engine import detectFaces
 
 photo_queue = queue.Queue()
 
@@ -28,10 +28,32 @@ def processPhoto(photo_id: int, file_path: str):
     try:
         updatePhotoStatus(photo_id, "PROCESSING")
 
-        time.sleep(2)
-
         if not Path(file_path).exists():
             raise FileNotFoundError(f"Photo no longer exists: {file_path}")
+
+        deleteFacesForPhoto(photo_id)
+
+        faces = detectFaces(file_path)
+
+        print(f"Photo {photo_id}: {len(faces)} faces detected")
+
+        for face in faces:
+            face_index = face["face_index"]
+            bbox = face["bbox"]
+            detection_score = face["detection_score"]
+            embedding = face["embedding"]
+
+            embedding_bytes = embedding.tobytes()
+
+            bbox_text = str(bbox)
+
+            saveFace(
+                photo_id=photo_id,
+                face_index=face_index,
+                bbox=bbox_text,
+                detection_score=detection_score,
+                embedding=embedding_bytes,
+            )
 
         updatePhotoStatus(photo_id, "COMPLETED")
 
@@ -48,8 +70,8 @@ def worker():
 
     print("Photo processing worker started")
 
-    try:
-        while True:
+    while True:
+        try:
             job = photo_queue.get()
 
             photo_id = job["photo_id"]
@@ -57,8 +79,8 @@ def worker():
 
             processPhoto(photo_id, file_path)
 
-    finally:
-        photo_queue.task_done()
+        finally:
+            photo_queue.task_done()
 
 
 # start worker processing in background thread

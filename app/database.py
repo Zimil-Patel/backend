@@ -79,6 +79,27 @@ def initializeDatabase():
         """
     )
 
+    # create faces table
+    cursor.execute(
+        """
+            CREATE TABLE IF NOT EXISTS faces(
+                id INTEGER  PRIMARY KEY AUTOINCREMENT,
+                photo_id INTEGER NOT NULL,
+                face_index INTEGER NOT NULL,
+                bbox TEXT NOT NULL,
+                detection_score REAL NOT NULL,
+                embedding BLOB NOT NULL,
+                created_at TEXT NOT NULL,
+
+                FOREIGN KEY (photo_id) REFERENCES photos(id),
+
+                UNIQUE(photo_id, face_index)
+            )
+        """
+    )
+
+    # create face cluster
+
     connection.commit()
 
     connection.close()
@@ -287,3 +308,74 @@ def updatePhotoStatus(photo_id: int, status: str):
     connection.close()
 
     print(f"Photo {photo_id} status → {status}")
+
+
+# save face
+def saveFace(
+    photo_id: int, face_index: int, bbox: str, detection_score: float, embedding: bytes
+):
+
+    connection = getConnection()
+
+    cursor = connection.cursor()
+
+    created_at = datetime.now().isoformat()
+
+    try:
+        cursor.execute(
+            """
+            INSERT INTO faces(
+                photo_id,
+                face_index,
+                bbox,
+                detection_score,
+                embedding,
+                created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                photo_id,
+                face_index,
+                bbox,
+                detection_score,
+                embedding,
+                created_at,
+            ),
+        )
+
+        connection.commit()
+
+        face_id = cursor.lastrowid
+
+        print(f"Saved face {face_index} for photo {photo_id}, Face ID: {face_id}")
+
+        return face_id
+
+    except sqlite3.IntegrityError:
+        print(f"Face {face_index} already exists for photo {photo_id}")
+
+        return None
+    finally:
+        connection.close()
+
+
+def deleteFacesForPhoto(photo_id: int):
+
+    connection = getConnection()
+
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+        DELETE FROM faces
+        WHERE photo_id = ?
+        """,
+        (photo_id,),
+    )
+
+    connection.commit()
+
+    connection.close()
+
+    print(f"Deleted old face records for photo {photo_id}")
