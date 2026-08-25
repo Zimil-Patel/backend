@@ -10,6 +10,7 @@ from app.database import (
     getOrCreateEvent,
     getOrCreateProject,
 )
+from app.processor import addPhotoJob
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".heic"}
 
@@ -90,7 +91,7 @@ class PhotoEventHandler(FileSystemEventHandler):
         print(f"calculated hash: {file_hash}")
 
         # save photo with hash
-        createPhoto(
+        photo_id = createPhoto(
             event_id=event_id,
             filename=path.name,
             file_path=str(
@@ -98,6 +99,11 @@ class PhotoEventHandler(FileSystemEventHandler):
             ),
             file_hash=file_hash,
         )
+
+        if photo_id is None:
+            return
+
+        addPhotoJob(photo_id=photo_id, file_path=str(path.resolve()))
 
 
 def start_watcher(photo_root: Path):

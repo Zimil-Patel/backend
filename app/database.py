@@ -267,3 +267,23 @@ def createPhoto(
 
     finally:
         connection.close()
+
+
+def updatePhotoStatus(photo_id: int, status: str):
+
+    connection = getConnection()
+
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+            UPDATE photos SET status = ? WHERE id = ?
+        """,
+        (status, photo_id),
+    )
+
+    connection.commit()
+
+    connection.close()
+
+    print(f"Photo {photo_id} status → {status}")

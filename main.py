@@ -2,6 +2,7 @@ import time
 from pathlib import Path
 
 from app.database import initializeDatabase
+from app.processor import startWorker
 from app.watcher import start_watcher
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -16,6 +17,8 @@ def main():
     print("--------------------------------")
 
     initializeDatabase()
+
+    startWorker()
 
     observer = start_watcher(PHOTO_ROOT)
 
