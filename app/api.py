@@ -124,3 +124,90 @@ def getPhotoImage(photo_id: int):
         )
 
     return FileResponse(file_path)
+
+
+@router.get("/faces/{face_id}/photos")
+def getPhotosForFace(face_id: int):
+
+    connection = getConnection()
+
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+            SELECT cluster_id FROM face_cluster_members WHERE face_id = ? LIMIT 1
+        """,
+        (face_id,),
+    )
+
+    cluster_row = cursor.fetchone()
+
+    if cluster_row is None:
+        connection.close()
+
+        return []
+
+    cluster_id = cluster_row[0]
+
+    cursor.execute(
+        """
+            SELECT DISTINCT 
+                photos.id,
+                photos.filename,
+                photos.status,
+                photos.created_at
+            FROM face_cluster_members
+            JOIN faces
+                ON faces.id = face_cluster_members.face_id
+            JOIN photos
+                ON photos.id = faces.photo_id
+            WHERE face_cluster_members.cluster_id = ?
+            ORDER BY photos.id ASC
+        """,
+        (cluster_id,),
+    )
+
+    rows = cursor.fetchall()
+
+    connection.close()
+
+    photos = []
+
+    for row in rows:
+        photos.append(
+            {"id": row[0], "filename": row[1], "status": row[2], "created_at": row[3]}
+        )
+
+    return photos
+
+
+@router.get("/clusters")
+def getClusters():
+
+    connection = getConnection()
+
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+            SELECT id, face_count, created_at, updated_at FROM face_clusters ORDER BY id ASC
+        """
+    )
+
+    rows = cursor.fetchall()
+
+    connection.close()
+
+    clusters = []
+
+    for row in rows:
+        clusters.append(
+            {
+                "id": row[0],
+                "face_count": row[1],
+                "created_at": row[2],
+                "updated_at": row[3],
+            }
+        )
+
+    return clusters
