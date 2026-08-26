@@ -4,6 +4,7 @@ from pathlib import Path
 
 from app.database import deleteFacesForPhoto, saveFace, updatePhotoStatus
 from app.face_engine import detectFaces
+from app.face_matcher import assignFaceToCluster
 
 photo_queue = queue.Queue()
 
@@ -47,13 +48,20 @@ def processPhoto(photo_id: int, file_path: str):
 
             bbox_text = str(bbox)
 
-            saveFace(
+            face_id = saveFace(
                 photo_id=photo_id,
                 face_index=face_index,
                 bbox=bbox_text,
                 detection_score=detection_score,
                 embedding=embedding_bytes,
             )
+
+            if face is None:
+                continue
+
+            cluster_id = assignFaceToCluster(face_id=face_id, embedding=embedding)
+
+            print(f"Face {face_id} → Cluster {cluster_id}")
 
         updatePhotoStatus(photo_id, "COMPLETED")
 

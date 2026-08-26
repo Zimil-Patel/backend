@@ -99,6 +99,33 @@ def initializeDatabase():
     )
 
     # create face cluster
+    cursor.execute(
+        """
+            CREATE TABLE IF NOT EXISTS face_clusters(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                representative_embedding BLOB NOT NULL,
+                face_count INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+        """
+    )
+
+    # create face cluster members table
+    cursor.execute(
+        """
+            CREATE TABLE IF NOT EXISTS face_cluster_members(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                face_id INTEGER NOT NULL UNIQUE,
+                cluster_id INTEGER NOT NULL,
+                similarity REAL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (face_id) REFERENCES faces(id),
+                FOREIGN KEY (cluster_id) REFERENCES face_clusters(id),
+                UNIQUE(face_id, cluster_id)
+            )
+        """
+    )
 
     connection.commit()
 
@@ -379,3 +406,77 @@ def deleteFacesForPhoto(photo_id: int):
     connection.close()
 
     print(f"Deleted old face records for photo {photo_id}")
+
+
+# get all faces in face cluster table
+def getAllFacesClusters():
+
+    connection = getConnection()
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+            SELECT id, representative_embedding, face_count FROM face_clusters ORDER BY id
+        """
+    )
+
+    rows = cursor.fetchall()
+
+    connection.close()
+
+    return rows
+
+
+# create new face cluster
+def createFaceCluster(embedding: bytes):
+
+    connection = getConnection()
+
+    cursor = connection.cursor()
+
+    created_at = datetime.now().isoformat()
+
+    cursor.execute(
+        """
+            INSERT INTO face_clusters(representative_embedding, face_count, created_at, updated_at) VALUES (?, ?, ? ,?)
+        """,
+        (embedding, 0, created_at, created_at),
+    )
+
+    connection.commit()
+
+    cluster_id = cursor.lastrowid
+
+    connection.close()
+
+    print(f"Created face cluster: {cluster_id}")
+
+    return cluster_id
+
+
+# add member faces to cluster
+def addFaceToCluster(face_id: int, cluster_id: int, similarity: float | None = None):
+
+    connection = getConnection()
+
+    cursor = connection.cursor()
+
+    created_at = datetime.now().isoformat()
+
+    cursor.execute(
+        """
+            INSERT INTO face_cluster_members(face_id, cluster_id, similarity, created_at) VALUES (?,?,?,?)
+        """,
+        (face_id, cluster_id, similarity, created_at),
+    )
+
+    cursor.execute(
+        """
+            UPDATE face_clusters SET face_count = face_count + 1, updated_at = ? WHERE id = ?
+        """,
+        (created_at, cluster_id),
+    )
+
+    connection.commit()
+
+    connection.close()
