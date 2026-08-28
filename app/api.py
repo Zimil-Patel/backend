@@ -178,7 +178,11 @@ def getPhotosForFace(face_id: int):
             {"id": row[0], "filename": row[1], "status": row[2], "created_at": row[3]}
         )
 
-    return photos
+    return {
+        "face_id": face_id,
+        "cluster_id": cluster_id,
+        "photos": photos,
+    }
 
 
 @router.get("/clusters")
@@ -211,3 +215,29 @@ def getClusters():
         )
 
     return clusters
+
+
+@router.get("projects/{project_id}/faces")
+def getProjectFaces(project_id: int):
+
+    connection = getConnection()
+
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+            SELECT DISTINCT
+                fc.id,
+                fc.face_count
+            FROM face_clusters AS fc
+            JOIN face_cluster_members AS fcm
+                ON fcm.cluster_id = fc.id
+            JOIN faces AS f
+                ON f.id = fcm.face_id
+            JOIN photos AS p
+                ON p.id = f.photo_id
+            JOIN events AS e
+                ON e.id = p.event_id
+            WHERE e.project_id
+        """
+    )
