@@ -4,10 +4,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse, StreamingResponse
 
 from app.database import getConnection
-
-from io import BytesIO
-
-from PIL import Image
+from app.services.image_service import createFaceThumbnail
 
 
 router = APIRouter()
@@ -248,7 +245,7 @@ def getProjectFaces(project_id: int):
                     JOIN faces AS f_count
                         ON f_count.id = fcm_count.face_id
                     JOIN photos as p_count
-                        ON p.id = f_count.photo_id
+                        ON p_count.id = f_count.photo_id
                     JOIN events as e_count
                         ON e_count.id = p.event_id
                     WHERE fcm_count.cluster_id = fc.id
@@ -266,7 +263,7 @@ def getProjectFaces(project_id: int):
                 ON e.id = p.event_id
             WHERE e.project_id = ? 
             GROUP BY fc.id
-            ORDER BY fc.id ASC
+            ORDER BY project_face_count DESC
         """,
         (project_id, project_id),
     )
@@ -301,16 +298,53 @@ def getFaceImage(face_id: int):
     cursor = connection.cursor()
 
     cursor.execute(
-        '''
+        """
             SELECT 
-                photos.file_path
+                photos.file_path,
                 faces.bbox
             FROM faces
             JOIN photos
                 ON photos.id = faces.photo_id
             WHERE faces.id = ?
-        ''',
+        """,
         (face_id,),
     )
 
     row = cursor.fetchone()
+
+    connection.close()
+
+    if row is None:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Face not found"
+        )
+
+    file_path = row[0]
+    bbox = row[1]
+
+    try:
+        image_buffer = createFaceThumbnail(
+            file_path,bbox
+        )
+
+        return StreamingResponse(
+            image_buffer,
+            media_type="image/jpg"
+        )
+
+    except FileNotFoundError:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Original photo not found",
+        )
+
+
+    except Exception as error:
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"Could not create face thumbnail: {error}",
+        )
