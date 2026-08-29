@@ -1,9 +1,14 @@
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 
 from app.database import getConnection
+
+from io import BytesIO
+
+from PIL import Image
+
 
 router = APIRouter()
 
@@ -217,18 +222,39 @@ def getClusters():
     return clusters
 
 
-@router.get("projects/{project_id}/faces")
+@router.get("/projects/{project_id}/faces")
 def getProjectFaces(project_id: int):
 
     connection = getConnection()
 
     cursor = connection.cursor()
 
+    # Find all face clusters that have faces inside this project.
+    #
+    # DISTINCT is important:
+    # One person can appear in many photos, but we want
+    # that person/cluster only once in the result.
     cursor.execute(
         """
-            SELECT DISTINCT
-                fc.id,
-                fc.face_count
+            SELECT
+                fc.id AS cluster_id,
+                fcm.face_id,
+                f.photo_id,
+                f.bbox,
+
+                (
+                    SELECT COUNT(*)
+                    FROM face_cluster_members AS fcm_count
+                    JOIN faces AS f_count
+                        ON f_count.id = fcm_count.face_id
+                    JOIN photos as p_count
+                        ON p.id = f_count.photo_id
+                    JOIN events as e_count
+                        ON e_count.id = p.event_id
+                    WHERE fcm_count.cluster_id = fc.id
+                        AND e_count.project_id = ?
+                ) AS project_face_count
+            
             FROM face_clusters AS fc
             JOIN face_cluster_members AS fcm
                 ON fcm.cluster_id = fc.id
@@ -238,6 +264,53 @@ def getProjectFaces(project_id: int):
                 ON p.id = f.photo_id
             JOIN events AS e
                 ON e.id = p.event_id
-            WHERE e.project_id
-        """
+            WHERE e.project_id = ? 
+            GROUP BY fc.id
+            ORDER BY fc.id ASC
+        """,
+        (project_id, project_id),
     )
+
+
+    rows = cursor.fetchall()
+
+    connection.close()
+
+    faces = []
+
+    for row in rows:
+        faces.append(
+            {
+                'cluster_id': row[0],
+                'face_id': row[1],
+                'photo_id': row[2],
+                'bbox': row[3],
+                'face_count': row[4]
+            }
+        )
+
+    return faces
+
+
+# Get thumbnail of faces
+@router.get("/faces/{face_id}/image")
+def getFaceImage(face_id: int):
+
+    connection = getConnection()
+
+    cursor = connection.cursor()
+
+    cursor.execute(
+        '''
+            SELECT 
+                photos.file_path
+                faces.bbox
+            FROM faces
+            JOIN photos
+                ON photos.id = faces.photo_id
+            WHERE faces.id = ?
+        ''',
+        (face_id,),
+    )
+
+    row = cursor.fetchone()
