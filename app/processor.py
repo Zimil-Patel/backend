@@ -2,9 +2,15 @@ import queue
 import threading
 from pathlib import Path
 
-from app.database import deleteFacesForPhoto, saveFace, updatePhotoStatus
+from app.database import (
+    deleteFacesForPhoto,
+    saveFace,
+    updateFaceThumbnailPath,
+    updatePhotoStatus,
+)
 from app.face_engine import detectFaces
 from app.face_matcher import assignFaceToCluster
+from app.services.image_service import createFaceThumbnail
 
 photo_queue = queue.Queue()
 
@@ -59,8 +65,22 @@ def processPhoto(photo_id: int, file_path: str):
             if face is None:
                 continue
 
-            cluster_id = assignFaceToCluster(face_id=face_id, embedding=embedding)
+            thumbnail_path = (
+                Path(__file__).resolve().parent.parent
+                / "data"
+                / "face_thumbnails"
+                / f"face_{face_id}.jpg"
+            )
 
+            saved_thumbnail_path = createFaceThumbnail(
+                file_path=file_path, bbox=bbox, output_path=str(thumbnail_path)
+            )
+
+            updateFaceThumbnailPath(
+                face_id=face_id, thumbnail_path=saved_thumbnail_path
+            )
+
+            cluster_id = assignFaceToCluster(face_id=face_id, embedding=embedding)
             print(f"Face {face_id} → Cluster {cluster_id}")
 
         updatePhotoStatus(photo_id, "COMPLETED")

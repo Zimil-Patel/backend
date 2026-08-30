@@ -34,6 +34,16 @@ def initializeDatabase():
 
     cursor = connection.cursor()
 
+
+    cursor.execute(
+        '''
+            CREATE TABLE IF NOT EXISTS galleries(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                
+            )
+        '''
+    )
+
     # create project table
     cursor.execute(
         """
@@ -90,6 +100,7 @@ def initializeDatabase():
                 detection_score REAL NOT NULL,
                 embedding BLOB NOT NULL,
                 created_at TEXT NOT NULL,
+                thumbnail_path TEXT,
 
                 FOREIGN KEY (photo_id) REFERENCES photos(id),
 
@@ -97,6 +108,35 @@ def initializeDatabase():
             )
         """
     )
+
+    # ---------------------------------------------------------
+    # ADD THUMBNAIL PATH TO EXISTING FACES TABLE
+    # ---------------------------------------------------------
+    #
+    # This is needed because our faces table may already exist
+    # from earlier development.
+    #
+    # SQLite will not add a new column automatically when using
+    # CREATE TABLE IF NOT EXISTS.
+
+    cursor.execute(
+        """
+        PRAGMA table_info(faces)
+        """
+    )
+
+    face_columns = [row[1] for row in cursor.fetchall()]
+
+    # Add thumbnail_path only if it doesn't already exist.
+    if "thumbnail_path" not in face_columns:
+        cursor.execute(
+            """
+            ALTER TABLE faces
+            ADD COLUMN thumbnail_path TEXT
+            """
+        )
+
+        print("Added thumbnail_path column to faces table")
 
     # create face cluster
     cursor.execute(
@@ -480,3 +520,28 @@ def addFaceToCluster(face_id: int, cluster_id: int, similarity: float | None = N
     connection.commit()
 
     connection.close()
+
+
+def updateFaceThumbnailPath(face_id: int, thumbnail_path: str):
+
+    connection = getConnection()
+
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+            UPDATE faces
+            SET thumbnail_path = ?
+            WHERE id = ?
+        """,
+        (
+            thumbnail_path,
+            face_id,
+        ),
+    )
+
+    connection.commit()
+
+    connection.close()
+
+    print(f"Thumbnail path saved for Face {face_id}")

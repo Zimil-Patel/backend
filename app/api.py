@@ -1,11 +1,10 @@
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 
 from app.database import getConnection
-from app.services.image_service import createFaceThumbnail
-
+from app.services.selfie_service import searchSelfie
 
 router = APIRouter()
 
@@ -231,62 +230,136 @@ def getProjectFaces(project_id: int):
     # DISTINCT is important:
     # One person can appear in many photos, but we want
     # that person/cluster only once in the result.
+    # -----------------------------------------------------
+    # FIND ONE REPRESENTATIVE FACE PER CLUSTER
+    # -----------------------------------------------------
+    #
+    # We use ROW_NUMBER() to rank faces inside each cluster.
+    #
+    # rn = 1 means:
+    # "This is the best face we selected for this cluster."
+    #
+    # For now, detection_score is our quality criterion.
+    # Later we can use a more advanced quality score that
+    # includes sharpness, face size, exposure, etc.
     cursor.execute(
         """
-            SELECT
-                fc.id AS cluster_id,
-                fcm.face_id,
-                f.photo_id,
-                f.bbox,
+        WITH ranked_faces AS (
 
-                (
-                    SELECT COUNT(*)
-                    FROM face_cluster_members AS fcm_count
-                    JOIN faces AS f_count
-                        ON f_count.id = fcm_count.face_id
-                    JOIN photos as p_count
-                        ON p_count.id = f_count.photo_id
-                    JOIN events as e_count
-                        ON e_count.id = p.event_id
-                    WHERE fcm_count.cluster_id = fc.id
-                        AND e_count.project_id = ?
-                ) AS project_face_count
-            
-            FROM face_clusters AS fc
-            JOIN face_cluster_members AS fcm
-                ON fcm.cluster_id = fc.id
-            JOIN faces AS f
-                ON f.id = fcm.face_id
-            JOIN photos AS p
-                ON p.id = f.photo_id
-            JOIN events AS e
-                ON e.id = p.event_id
-            WHERE e.project_id = ? 
-            GROUP BY fc.id
-            ORDER BY project_face_count DESC
+    SELECT
+        fc.id AS cluster_id,
+        fcm.face_id,
+        f.photo_id,
+        f.bbox,
+        f.detection_score,
+
+        -- Rank faces inside each cluster.
+        -- The highest detection score gets rank 1.
+        ROW_NUMBER() OVER (
+            PARTITION BY fc.id
+            ORDER BY
+                f.detection_score DESC,
+                f.id ASC
+        ) AS rn
+
+    FROM face_clusters AS fc
+
+    -- Connect each cluster to its member faces.
+    JOIN face_cluster_members AS fcm
+        ON fcm.cluster_id = fc.id
+
+    -- Get the actual face record.
+    JOIN faces AS f
+        ON f.id = fcm.face_id
+
+    -- Get the photo containing that face.
+    JOIN photos AS p
+        ON p.id = f.photo_id
+
+    -- Get the event containing that photo.
+    JOIN events AS e
+        ON e.id = p.event_id
+
+    -- Only include faces belonging to the requested project.
+    WHERE e.project_id = ?
+)
+
+SELECT
+    rf.cluster_id,
+    rf.face_id,
+    rf.photo_id,
+    rf.bbox,
+    rf.detection_score,
+
+    -- Count how many UNIQUE photos contain this person
+    -- inside the requested project.
+    (
+        SELECT COUNT(DISTINCT p_count.id)
+
+        FROM face_cluster_members AS fcm_count
+
+        -- Get each face belonging to this cluster.
+        JOIN faces AS f_count
+            ON f_count.id = fcm_count.face_id
+
+        -- Get the photo containing that face.
+        JOIN photos AS p_count
+            ON p_count.id = f_count.photo_id
+
+        -- Get the event containing that photo.
+        JOIN events AS e_count
+            ON e_count.id = p_count.event_id
+
+        -- Only count this particular cluster.
+        WHERE fcm_count.cluster_id = rf.cluster_id
+
+        -- And only count photos from this project.
+        AND e_count.project_id = ?
+    ) AS project_photo_count
+
+        FROM ranked_faces AS rf
+
+        -- Keep only the best representative face for each cluster.
+        WHERE rf.rn = 1
+
+        -- MOST PHOTOS FIRST.
+        --
+        -- Example:
+        -- Cluster 12 → 245 photos
+        -- Cluster 15 → 180 photos
+        -- Cluster 16 → 90 photos
+        ORDER BY
+            project_photo_count DESC,
+
+            -- If two people have the same number of photos,
+            -- use cluster ID as a stable tie-breaker.
+            rf.cluster_id ASC
         """,
-        (project_id, project_id),
+        (
+            project_id,
+            project_id,
+        ),
     )
-
 
     rows = cursor.fetchall()
 
     connection.close()
 
-    faces = []
+    people = []
 
     for row in rows:
-        faces.append(
+        people.append(
             {
-                'cluster_id': row[0],
-                'face_id': row[1],
-                'photo_id': row[2],
-                'bbox': row[3],
-                'face_count': row[4]
+                "cluster_id": row[0],
+                "face_id": row[1],
+                "photo_id": row[2],
+                "bbox": row[3],
+                "detection_score": row[4],
+                "photo_count": row[5],
             }
         )
 
-    return faces
+    return people
 
 
 # Get thumbnail of faces
@@ -300,11 +373,8 @@ def getFaceImage(face_id: int):
     cursor.execute(
         """
             SELECT 
-                photos.file_path,
-                faces.bbox
+                thumbnail_path
             FROM faces
-            JOIN photos
-                ON photos.id = faces.photo_id
             WHERE faces.id = ?
         """,
         (face_id,),
@@ -314,37 +384,35 @@ def getFaceImage(face_id: int):
 
     connection.close()
 
-    if row is None:
+    thumbnail_path = row[0]
 
-        raise HTTPException(
-            status_code=404,
-            detail="Face not found"
-        )
+    if not thumbnail_path:
+        raise HTTPException(status_code=404, detail="Face not found")
 
-    file_path = row[0]
-    bbox = row[1]
+    thumbnail = Path(thumbnail_path)
 
-    try:
-        image_buffer = createFaceThumbnail(
-            file_path,bbox
-        )
+    if not thumbnail.exists():
+        raise HTTPException(status_code=404, detail="Face thumbnail file not found")
 
-        return StreamingResponse(
-            image_buffer,
-            media_type="image/jpg"
-        )
-
-    except FileNotFoundError:
-
-        raise HTTPException(
-            status_code=404,
-            detail="Original photo not found",
-        )
+    return FileResponse(
+        thumbnail,
+        media_type="image/jpeg",
+    )
 
 
-    except Exception as error:
+@router.post("/projects/{project_id}/search-selfie")
+async def searchProjectBySelfie(project_id: int, selfie: UploadFile = File(...)):
 
-        raise HTTPException(
-            status_code=500,
-            detail=f"Could not create face thumbnail: {error}",
-        )
+    print(f"File type: {selfie.content_type}")
+
+    # if not selfie.content_type or not selfie.content_type.startswith("image/"):
+    #     raise HTTPException(status_code=400, detail="Please upload an image.")
+
+    selfie_bytes = await selfie.read()
+
+    if not selfie_bytes:
+        raise HTTPException(status_code=400, detail="Upload image is empty.")
+
+    result = searchSelfie(selfie_bytes=selfie_bytes, project_id=project_id)
+
+    return result
