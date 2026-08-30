@@ -56,7 +56,7 @@ def getEvents(project_id: int):
     events = []
 
     for row in rows:
-        events.append({"id": row[0], "name": row[1], "crated_at": row[2]})
+        events.append({"id": row[0], "name": row[1], "created_at": row[2]})
 
     return events
 
