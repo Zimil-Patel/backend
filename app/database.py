@@ -35,14 +35,14 @@ def initializeDatabase():
     cursor = connection.cursor()
 
 
-    cursor.execute(
-        '''
-            CREATE TABLE IF NOT EXISTS galleries(
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+    # cursor.execute(
+    #     '''
+    #         CREATE TABLE IF NOT EXISTS galleries(
+    #             id INTEGER PRIMARY KEY AUTOINCREMENT,
                 
-            )
-        '''
-    )
+    #         )
+    #     '''
+    # )
 
     # create project table
     cursor.execute(

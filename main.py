@@ -2,6 +2,7 @@ import time
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import router
 from app.database import initializeDatabase
@@ -15,6 +16,14 @@ PHOTO_ROOT = PROJECT_ROOT / "photo_storage" / "projects"
 app = FastAPI(
     title="Stories By Parin Photo server API",
     version="1.0.0",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.include_router(router)

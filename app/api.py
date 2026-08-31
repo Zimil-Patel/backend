@@ -127,8 +127,8 @@ def getPhotoImage(photo_id: int):
     return FileResponse(file_path)
 
 
-@router.get("/faces/{face_id}/photos")
-def getPhotosForFace(face_id: int):
+@router.get("/projects/{project_id}/faces/{face_id}/photos")
+def getPhotosForFace(face_id: int, project_id: int):
 
     connection = getConnection()
 
@@ -152,20 +152,30 @@ def getPhotosForFace(face_id: int):
 
     cursor.execute(
         """
-            SELECT DISTINCT 
-                photos.id,
-                photos.filename,
-                photos.status,
-                photos.created_at
-            FROM face_cluster_members
-            JOIN faces
-                ON faces.id = face_cluster_members.face_id
-            JOIN photos
-                ON photos.id = faces.photo_id
-            WHERE face_cluster_members.cluster_id = ?
-            ORDER BY photos.id ASC
+        SELECT DISTINCT
+            photos.id,
+            photos.filename,
+            photos.status,
+            photos.created_at
+
+        FROM face_cluster_members
+
+        JOIN faces
+            ON faces.id = face_cluster_members.face_id
+
+        JOIN photos
+            ON photos.id = faces.photo_id
+
+        JOIN events
+            ON events.id = photos.event_id
+
+        WHERE face_cluster_members.cluster_id = ?
+          AND events.project_id = ?
+
+        ORDER BY photos.id ASC
+      
         """,
-        (cluster_id,),
+        (cluster_id,project_id,),
     )
 
     rows = cursor.fetchall()
@@ -175,13 +185,21 @@ def getPhotosForFace(face_id: int):
     photos = []
 
     for row in rows:
+
         photos.append(
-            {"id": row[0], "filename": row[1], "status": row[2], "created_at": row[3]}
+            {
+                "id": row[0],
+                "filename": row[1],
+                "status": row[2],
+                "created_at": row[3],
+            }
         )
 
     return {
         "face_id": face_id,
         "cluster_id": cluster_id,
+        "project_id": project_id,
+        "photos_count": len(photos),
         "photos": photos,
     }
 
