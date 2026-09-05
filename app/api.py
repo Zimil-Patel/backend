@@ -170,10 +170,9 @@ def getPhotosForFace(face_id: int, project_id: int):
             ON events.id = photos.event_id
 
         WHERE face_cluster_members.cluster_id = ?
-          AND events.project_id = ?
+            AND events.project_id = ?
 
         ORDER BY photos.id ASC
-      
         """,
         (cluster_id,project_id,),
     )
