@@ -46,7 +46,7 @@ def findBestCluster(embedding: bytes):
 
         print(f"Face similarity → Cluster {cluster_id}: {similarity:.4f}")
 
-        if similarity > MATCH_THRESHOLD:
+        if similarity > best_similarity:
             best_cluster_id = cluster_id
             best_similarity = similarity
 

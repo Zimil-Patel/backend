@@ -62,7 +62,7 @@ def processPhoto(photo_id: int, file_path: str):
                 embedding=embedding_bytes,
             )
 
-            if face is None:
+            if face_id is None:
                 continue
 
             thumbnail_path = (

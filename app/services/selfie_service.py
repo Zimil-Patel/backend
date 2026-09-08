@@ -141,7 +141,7 @@ def searchSelfie(selfie_bytes: bytes, project_id: int):
                     "id": row[0],
                     "filename": row[1],
                     "status": row[2],
-                    "create_at": row[3],
+                    "created_at": row[3],
                 }
             )
 

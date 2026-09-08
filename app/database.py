@@ -430,20 +430,35 @@ def saveFace(
 def deleteFacesForPhoto(photo_id: int):
 
     connection = getConnection()
-
     cursor = connection.cursor()
 
-    cursor.execute(
-        """
-        DELETE FROM faces
-        WHERE photo_id = ?
-        """,
-        (photo_id,),
-    )
+    try:
+        # Delete cluster memberships for faces belonging to this photo.
+        cursor.execute(
+            """
+            DELETE FROM face_cluster_members
+            WHERE face_id IN (
+                SELECT id
+                FROM faces
+                WHERE photo_id = ?
+            )
+            """,
+            (photo_id,),
+        )
 
-    connection.commit()
+        # Now delete the actual face records.
+        cursor.execute(
+            """
+            DELETE FROM faces
+            WHERE photo_id = ?
+            """,
+            (photo_id,),
+        )
 
-    connection.close()
+        connection.commit()
+
+    finally:
+        connection.close()
 
     print(f"Deleted old face records for photo {photo_id}")
 
