@@ -1,0 +1,608 @@
+Database initialized: /Users/buddy/Documents/Development/photo_server/backend/data/photos.db
+Created project: sanket wed, ID: 1
+Created event: WEDDING, ID: 1
+Indexed photo: 0D5A1131.JPG ID: 1
+Photo 1 status → PROCESSING
+Deleted old face records for photo 1
+/Users/buddy/Documents/Development/photo_server/backend/.venv/lib/python3.12/site-packages/insightface/utils/face_align.py:23: FutureWarning: `estimate` is deprecated since version 0.26 and will be removed in version 2.2. Please use `SimilarityTransform.from_estimate` class constructor instead.
+  tform.estimate(lmk, dst)
+Saved face 1 for photo 1, Face ID: 1
+Created face cluster: 1
+Saved face 2 for photo 1, Face ID: 2
+BEST CLUSTER → 1 similarity=-0.0282
+Created face cluster: 2
+Saved face 3 for photo 1, Face ID: 3
+BEST CLUSTER → 1 similarity=-0.0052
+Created face cluster: 3
+Saved face 4 for photo 1, Face ID: 4
+BEST CLUSTER → 3 similarity=0.0147
+Created face cluster: 4
+Saved face 5 for photo 1, Face ID: 5
+BEST CLUSTER → 4 similarity=0.2061
+Created face cluster: 5
+Saved face 6 for photo 1, Face ID: 6
+BEST CLUSTER → 5 similarity=0.0380
+Created face cluster: 6
+Saved face 7 for photo 1, Face ID: 7
+BEST CLUSTER → 6 similarity=0.1738
+Created face cluster: 7
+Photo 1 status → COMPLETED
+Indexed photo: 0D5A1108.JPG ID: 2
+Photo 2 status → PROCESSING
+Deleted old face records for photo 2
+Saved face 1 for photo 2, Face ID: 8
+BEST CLUSTER → 1 similarity=0.9134
+Saved face 2 for photo 2, Face ID: 9
+BEST CLUSTER → 2 similarity=0.9393
+Saved face 3 for photo 2, Face ID: 10
+BEST CLUSTER → 1 similarity=0.0668
+Created face cluster: 8
+Saved face 4 for photo 2, Face ID: 11
+BEST CLUSTER → 1 similarity=0.1761
+Created face cluster: 9
+Saved face 5 for photo 2, Face ID: 12
+BEST CLUSTER → 4 similarity=0.1202
+Created face cluster: 10
+Saved face 6 for photo 2, Face ID: 13
+BEST CLUSTER → 7 similarity=0.1462
+Created face cluster: 11
+Photo 2 status → COMPLETED
+Indexed photo: 0D5A1178.JPG ID: 3
+Photo 3 status → PROCESSING
+Deleted old face records for photo 3
+Saved face 1 for photo 3, Face ID: 14
+BEST CLUSTER → 1 similarity=0.8799
+Saved face 2 for photo 3, Face ID: 15
+BEST CLUSTER → 3 similarity=0.2883
+Created face cluster: 12
+Saved face 3 for photo 3, Face ID: 16
+BEST CLUSTER → 1 similarity=0.1560
+Created face cluster: 13
+Saved face 4 for photo 3, Face ID: 17
+BEST CLUSTER → 2 similarity=0.9381
+Saved face 5 for photo 3, Face ID: 18
+BEST CLUSTER → 2 similarity=0.1791
+Created face cluster: 14
+Photo 3 status → COMPLETED
+Indexed photo: 0D5A1156.JPG ID: 4
+Photo 4 status → PROCESSING
+Deleted old face records for photo 4
+Saved face 1 for photo 4, Face ID: 19
+BEST CLUSTER → 1 similarity=0.9064
+Saved face 2 for photo 4, Face ID: 20
+BEST CLUSTER → 2 similarity=0.9294
+Saved face 3 for photo 4, Face ID: 21
+BEST CLUSTER → 10 similarity=0.1459
+Created face cluster: 15
+Saved face 4 for photo 4, Face ID: 22
+BEST CLUSTER → 9 similarity=0.1476
+Created face cluster: 16
+Saved face 5 for photo 4, Face ID: 23
+BEST CLUSTER → 10 similarity=0.2397
+Created face cluster: 17
+Saved face 6 for photo 4, Face ID: 24
+BEST CLUSTER → 14 similarity=0.6571
+Saved face 7 for photo 4, Face ID: 25
+BEST CLUSTER → 6 similarity=0.2025
+Created face cluster: 18
+Saved face 8 for photo 4, Face ID: 26
+BEST CLUSTER → 7 similarity=0.3725
+Created face cluster: 19
+Saved face 9 for photo 4, Face ID: 27
+BEST CLUSTER → 6 similarity=0.2335
+Created face cluster: 20
+Saved face 10 for photo 4, Face ID: 28
+Indexed photo: 0D5A1165.JPG ID: 5
+BEST CLUSTER → 6 similarity=0.3265
+Created face cluster: 21
+Saved face 11 for photo 4, Face ID: 29
+BEST CLUSTER → 6 similarity=0.4253
+Created face cluster: 22
+Saved face 12 for photo 4, Face ID: 30
+BEST CLUSTER → 6 similarity=0.4669
+Created face cluster: 23
+Saved face 13 for photo 4, Face ID: 31
+BEST CLUSTER → 6 similarity=0.4164
+Created face cluster: 24
+Saved face 14 for photo 4, Face ID: 32
+BEST CLUSTER → 6 similarity=0.3071
+Created face cluster: 25
+Saved face 15 for photo 4, Face ID: 33
+BEST CLUSTER → 22 similarity=0.3432
+Created face cluster: 26
+Saved face 16 for photo 4, Face ID: 34
+BEST CLUSTER → 24 similarity=0.5308
+Created face cluster: 27
+Photo 4 status → COMPLETED
+Photo 5 status → PROCESSING
+Deleted old face records for photo 5
+Saved face 1 for photo 5, Face ID: 35
+BEST CLUSTER → 1 similarity=0.9177
+Saved face 2 for photo 5, Face ID: 36
+BEST CLUSTER → 13 similarity=0.1095
+Created face cluster: 28
+Saved face 3 for photo 5, Face ID: 37
+BEST CLUSTER → 2 similarity=0.8976
+Saved face 4 for photo 5, Face ID: 38
+BEST CLUSTER → 10 similarity=0.0821
+Created face cluster: 29
+Saved face 5 for photo 5, Face ID: 39
+BEST CLUSTER → 7 similarity=0.3575
+Created face cluster: 30
+Saved face 6 for photo 5, Face ID: 40
+BEST CLUSTER → 23 similarity=0.6024
+Saved face 7 for photo 5, Face ID: 41
+BEST CLUSTER → 14 similarity=0.3207
+Created face cluster: 31
+Photo 5 status → COMPLETED
+Indexed photo: 0D5A1172.JPG ID: 6
+Photo 6 status → PROCESSING
+Deleted old face records for photo 6
+Saved face 1 for photo 6, Face ID: 42
+BEST CLUSTER → 1 similarity=0.8927
+Saved face 2 for photo 6, Face ID: 43
+BEST CLUSTER → 2 similarity=0.9409
+Saved face 3 for photo 6, Face ID: 44
+BEST CLUSTER → 3 similarity=0.1295
+Created face cluster: 32
+Saved face 4 for photo 6, Face ID: 45
+BEST CLUSTER → 25 similarity=0.1457
+Created face cluster: 33
+Photo 6 status → COMPLETED
+Indexed photo: 0D5A1160.JPG ID: 7
+Photo 7 status → PROCESSING
+Deleted old face records for photo 7
+Saved face 1 for photo 7, Face ID: 46
+BEST CLUSTER → 1 similarity=0.9085
+Saved face 2 for photo 7, Face ID: 47
+BEST CLUSTER → 3 similarity=0.1977
+Created face cluster: 34
+Saved face 3 for photo 7, Face ID: 48
+BEST CLUSTER → 29 similarity=0.2353
+Created face cluster: 35
+Saved face 4 for photo 7, Face ID: 49
+BEST CLUSTER → 2 similarity=0.9328
+Saved face 5 for photo 7, Face ID: 50
+BEST CLUSTER → 23 similarity=0.4172
+Created face cluster: 36
+Saved face 6 for photo 7, Face ID: 51
+BEST CLUSTER → 19 similarity=0.3286
+Created face cluster: 37
+Saved face 7 for photo 7, Face ID: 52
+BEST CLUSTER → 14 similarity=0.4708
+Created face cluster: 38
+Saved face 8 for photo 7, Face ID: 53
+BEST CLUSTER → 25 similarity=0.3885
+Created face cluster: 39
+Saved face 9 for photo 7, Face ID: 54
+BEST CLUSTER → 39 similarity=0.5463
+Created face cluster: 40
+Saved face 10 for photo 7, Face ID: 55
+BEST CLUSTER → 23 similarity=0.4419
+Created face cluster: 41
+Saved face 11 for photo 7, Face ID: 56
+BEST CLUSTER → 22 similarity=0.6841
+Photo 7 status → COMPLETED
+Indexed photo: 0D5A1175.JPG ID: 8
+Photo 8 status → PROCESSING
+Deleted old face records for photo 8
+Saved face 1 for photo 8, Face ID: 57
+BEST CLUSTER → 1 similarity=0.9288
+Saved face 2 for photo 8, Face ID: 58
+BEST CLUSTER → 5 similarity=0.3140
+Created face cluster: 42
+Saved face 3 for photo 8, Face ID: 59
+BEST CLUSTER → 2 similarity=0.9196
+Saved face 4 for photo 8, Face ID: 60
+BEST CLUSTER → 10 similarity=0.2218
+Created face cluster: 43
+Saved face 5 for photo 8, Face ID: 61
+BEST CLUSTER → 14 similarity=0.7086
+Saved face 6 for photo 8, Face ID: 62
+BEST CLUSTER → 26 similarity=0.3587
+Created face cluster: 44
+Saved face 7 for photo 8, Face ID: 63
+BEST CLUSTER → 18 similarity=0.3402
+Created face cluster: 45
+Saved face 8 for photo 8, Face ID: 64
+BEST CLUSTER → 23 similarity=0.5431
+Created face cluster: 46
+Photo 8 status → COMPLETED
+Indexed photo: 0D5A1161.JPG ID: 9
+Photo 9 status → PROCESSING
+Deleted old face records for photo 9
+Saved face 1 for photo 9, Face ID: 65
+BEST CLUSTER → 1 similarity=0.9482
+Saved face 2 for photo 9, Face ID: 66
+BEST CLUSTER → 2 similarity=0.9201
+Saved face 3 for photo 9, Face ID: 67
+BEST CLUSTER → 3 similarity=0.2181
+Created face cluster: 47
+Saved face 4 for photo 9, Face ID: 68
+BEST CLUSTER → 3 similarity=0.2177
+Created face cluster: 48
+Saved face 5 for photo 9, Face ID: 69
+BEST CLUSTER → 33 similarity=0.1918
+Created face cluster: 49
+Saved face 6 for photo 9, Face ID: 70
+BEST CLUSTER → 14 similarity=0.6178
+Saved face 7 for photo 9, Face ID: 71
+BEST CLUSTER → 30 similarity=0.3903
+Created face cluster: 50
+Photo 9 status → COMPLETED
+Indexed photo: 0D5A1115.JPG ID: 10
+Photo 10 status → PROCESSING
+Deleted old face records for photo 10
+Saved face 1 for photo 10, Face ID: 72
+BEST CLUSTER → 48 similarity=0.2576
+Created face cluster: 51
+Saved face 2 for photo 10, Face ID: 73
+BEST CLUSTER → 1 similarity=0.9061
+Saved face 3 for photo 10, Face ID: 74
+BEST CLUSTER → 3 similarity=0.2595
+Created face cluster: 52
+Saved face 4 for photo 10, Face ID: 75
+BEST CLUSTER → 12 similarity=0.1506
+Created face cluster: 53
+Saved face 5 for photo 10, Face ID: 76
+BEST CLUSTER → 2 similarity=0.9323
+Saved face 6 for photo 10, Face ID: 77
+BEST CLUSTER → 11 similarity=0.3742
+Created face cluster: 54
+Saved face 7 for photo 10, Face ID: 78
+BEST CLUSTER → 18 similarity=0.4154
+Created face cluster: 55
+Saved face 8 for photo 10, Face ID: 79
+BEST CLUSTER → 24 similarity=0.4319
+Created face cluster: 56
+Saved face 9 for photo 10, Face ID: 80
+BEST CLUSTER → 41 similarity=0.3962
+Created face cluster: 57
+Photo 10 status → COMPLETED
+Created event: SANTAK DJ, ID: 2
+Indexed photo: 0D5A0606.JPG ID: 11
+Photo 11 status → PROCESSING
+Deleted old face records for photo 11
+Saved face 1 for photo 11, Face ID: 81
+BEST CLUSTER → 48 similarity=0.2530
+Created face cluster: 58
+Saved face 2 for photo 11, Face ID: 82
+BEST CLUSTER → 55 similarity=0.1577
+Created face cluster: 59
+Saved face 3 for photo 11, Face ID: 83
+BEST CLUSTER → 15 similarity=0.8007
+Saved face 4 for photo 11, Face ID: 84
+BEST CLUSTER → 43 similarity=0.2450
+Created face cluster: 60
+Saved face 5 for photo 11, Face ID: 85
+BEST CLUSTER → 43 similarity=0.7379
+Saved face 6 for photo 11, Face ID: 86
+BEST CLUSTER → 2 similarity=0.7223
+Saved face 7 for photo 11, Face ID: 87
+BEST CLUSTER → 32 similarity=0.2186
+Created face cluster: 61
+Saved face 8 for photo 11, Face ID: 88
+BEST CLUSTER → 2 similarity=0.3062
+Created face cluster: 62
+Saved face 9 for photo 11, Face ID: 89
+BEST CLUSTER → 47 similarity=0.6608
+Saved face 10 for photo 11, Face ID: 90
+BEST CLUSTER → 57 similarity=0.2670
+Created face cluster: 63
+Saved face 11 for photo 11, Face ID: 91
+BEST CLUSTER → 52 similarity=0.1907
+Created face cluster: 64
+Saved face 12 for photo 11, Face ID: 92
+BEST CLUSTER → 20 similarity=0.1573
+Created face cluster: 65
+Saved face 13 for photo 11, Face ID: 93
+BEST CLUSTER → 24 similarity=0.6513
+Saved face 14 for photo 11, Face ID: 94
+BEST CLUSTER → 61 similarity=0.1761
+Created face cluster: 66
+Photo 11 status → COMPLETED
+Indexed photo: 0D5A0675.JPG ID: 12
+Photo 12 status → PROCESSING
+Deleted old face records for photo 12
+Saved face 1 for photo 12, Face ID: 95
+BEST CLUSTER → 5 similarity=0.2072
+Created face cluster: 67
+Saved face 2 for photo 12, Face ID: 96
+BEST CLUSTER → 1 similarity=0.4208
+Created face cluster: 68
+Saved face 3 for photo 12, Face ID: 97
+BEST CLUSTER → 17 similarity=0.2579
+Created face cluster: 69
+Saved face 4 for photo 12, Face ID: 98
+BEST CLUSTER → 65 similarity=0.1391
+Created face cluster: 70
+Saved face 5 for photo 12, Face ID: 99
+BEST CLUSTER → 19 similarity=0.3132
+Created face cluster: 71
+Saved face 6 for photo 12, Face ID: 100
+BEST CLUSTER → 59 similarity=0.2565
+Created face cluster: 72
+Saved face 7 for photo 12, Face ID: 101
+BEST CLUSTER → 17 similarity=0.2602
+Created face cluster: 73
+Saved face 8 for photo 12, Face ID: 102
+BEST CLUSTER → 40 similarity=0.2775
+Created face cluster: 74
+Photo 12 status → COMPLETED
+Indexed photo: 0D5A0512.JPG ID: 13
+Photo 13 status → PROCESSING
+Deleted old face records for photo 13
+Saved face 1 for photo 13, Face ID: 103
+BEST CLUSTER → 32 similarity=0.2164
+Created face cluster: 75
+Saved face 2 for photo 13, Face ID: 104
+BEST CLUSTER → 53 similarity=0.1769
+Created face cluster: 76
+Saved face 3 for photo 13, Face ID: 105
+BEST CLUSTER → 76 similarity=0.3127
+Created face cluster: 77
+Saved face 4 for photo 13, Face ID: 106
+BEST CLUSTER → 60 similarity=0.7742
+Photo 13 status → COMPLETED
+Indexed photo: 0D5A0482.JPG ID: 14
+Photo 14 status → PROCESSING
+Deleted old face records for photo 14
+Saved face 1 for photo 14, Face ID: 107
+BEST CLUSTER → 42 similarity=0.8467
+Saved face 2 for photo 14, Face ID: 108
+BEST CLUSTER → 43 similarity=0.7613
+Photo 14 status → COMPLETED
+Indexed photo: 0D5A0641.JPG ID: 15
+Photo 15 status → PROCESSING
+Deleted old face records for photo 15
+Saved face 1 for photo 15, Face ID: 109
+BEST CLUSTER → 43 similarity=0.7861
+Saved face 2 for photo 15, Face ID: 110
+BEST CLUSTER → 60 similarity=0.7852
+Saved face 3 for photo 15, Face ID: 111
+BEST CLUSTER → 13 similarity=0.5835
+Created face cluster: 78
+Saved face 4 for photo 15, Face ID: 112
+BEST CLUSTER → 65 similarity=0.2137
+Created face cluster: 79
+Photo 15 status → COMPLETED
+Indexed photo: 0D5A0644.JPG ID: 16
+Photo 16 status → PROCESSING
+Deleted old face records for photo 16
+Saved face 1 for photo 16, Face ID: 113
+BEST CLUSTER → 15 similarity=0.6578
+Saved face 2 for photo 16, Face ID: 114
+BEST CLUSTER → 59 similarity=0.2581
+Created face cluster: 80
+Saved face 3 for photo 16, Face ID: 115
+BEST CLUSTER → 1 similarity=0.3209
+Created face cluster: 81
+Photo 16 status → COMPLETED
+Indexed photo: 0D5A0487.JPG ID: 17
+Photo 17 status → PROCESSING
+Deleted old face records for photo 17
+Saved face 1 for photo 17, Face ID: 116
+BEST CLUSTER → 43 similarity=0.7429
+Saved face 2 for photo 17, Face ID: 117
+BEST CLUSTER → 42 similarity=0.8520
+Photo 17 status → COMPLETED
+Indexed photo: 0D5A0556.JPG ID: 18
+Photo 18 status → PROCESSING
+Deleted old face records for photo 18
+Saved face 1 for photo 18, Face ID: 118
+BEST CLUSTER → 60 similarity=0.7957
+Photo 18 status → COMPLETED
+Indexed photo: 0D5A0634.JPG ID: 19
+Photo 19 status → PROCESSING
+Deleted old face records for photo 19
+Saved face 1 for photo 19, Face ID: 119
+BEST CLUSTER → 13 similarity=0.8565
+Saved face 2 for photo 19, Face ID: 120
+BEST CLUSTER → 43 similarity=0.7880
+Saved face 3 for photo 19, Face ID: 121
+BEST CLUSTER → 42 similarity=0.7503
+Saved face 4 for photo 19, Face ID: 122
+BEST CLUSTER → 66 similarity=0.2017
+Created face cluster: 82
+Saved face 5 for photo 19, Face ID: 123
+BEST CLUSTER → 15 similarity=0.4170
+Created face cluster: 83
+Saved face 6 for photo 19, Face ID: 124
+BEST CLUSTER → 10 similarity=0.6419
+Saved face 7 for photo 19, Face ID: 125
+BEST CLUSTER → 81 similarity=0.5285
+Created face cluster: 84
+Saved face 8 for photo 19, Face ID: 126
+BEST CLUSTER → 2 similarity=0.2061
+Created face cluster: 85
+Saved face 9 for photo 19, Face ID: 127
+BEST CLUSTER → 9 similarity=0.1890
+Created face cluster: 86
+Photo 19 status → COMPLETED
+Indexed photo: 0D5A0584.JPG ID: 20
+Photo 20 status → PROCESSING
+Deleted old face records for photo 20
+Saved face 1 for photo 20, Face ID: 128
+BEST CLUSTER → 66 similarity=0.5440
+Created face cluster: 87
+Saved face 2 for photo 20, Face ID: 129
+BEST CLUSTER → 43 similarity=0.8047
+Saved face 3 for photo 20, Face ID: 130
+BEST CLUSTER → 64 similarity=0.4018
+Created face cluster: 88
+Saved face 4 for photo 20, Face ID: 131
+BEST CLUSTER → 60 similarity=0.8652
+Saved face 5 for photo 20, Face ID: 132
+BEST CLUSTER → 42 similarity=0.9259
+Saved face 6 for photo 20, Face ID: 133
+BEST CLUSTER → 15 similarity=0.7569
+Saved face 7 for photo 20, Face ID: 134
+BEST CLUSTER → 82 similarity=0.2166
+Created face cluster: 89
+Saved face 8 for photo 20, Face ID: 135
+BEST CLUSTER → 2 similarity=0.6476
+Saved face 9 for photo 20, Face ID: 136
+BEST CLUSTER → 14 similarity=0.1639
+Created face cluster: 90
+Saved face 10 for photo 20, Face ID: 137
+BEST CLUSTER → 47 similarity=0.4770
+Created face cluster: 91
+Photo 20 status → COMPLETED
+Created event: HALDI, ID: 3
+Indexed photo: 2E6A9852.JPG ID: 21
+Photo 21 status → PROCESSING
+Deleted old face records for photo 21
+Saved face 1 for photo 21, Face ID: 138
+BEST CLUSTER → 2 similarity=0.6701
+Saved face 2 for photo 21, Face ID: 139
+BEST CLUSTER → 1 similarity=0.2652
+Created face cluster: 92
+Saved face 3 for photo 21, Face ID: 140
+BEST CLUSTER → 73 similarity=0.2283
+Created face cluster: 93
+Saved face 4 for photo 21, Face ID: 141
+BEST CLUSTER → 49 similarity=0.2946
+Created face cluster: 94
+Saved face 5 for photo 21, Face ID: 142
+BEST CLUSTER → 55 similarity=0.2188
+Created face cluster: 95
+Saved face 6 for photo 21, Face ID: 143
+BEST CLUSTER → 43 similarity=0.5875
+Created face cluster: 96
+Saved face 7 for photo 21, Face ID: 144
+BEST CLUSTER → 59 similarity=0.2979
+Created face cluster: 97
+Saved face 8 for photo 21, Face ID: 145
+BEST CLUSTER → 67 similarity=0.2290
+Created face cluster: 98
+Saved face 9 for photo 21, Face ID: 146
+BEST CLUSTER → 49 similarity=0.2618
+Created face cluster: 99
+Photo 21 status → COMPLETED
+Indexed photo: 2E6A9842.JPG ID: 22
+Photo 22 status → PROCESSING
+Deleted old face records for photo 22
+Saved face 1 for photo 22, Face ID: 147
+BEST CLUSTER → 92 similarity=0.8091
+Saved face 2 for photo 22, Face ID: 148
+BEST CLUSTER → 4 similarity=0.2979
+Created face cluster: 100
+Saved face 3 for photo 22, Face ID: 149
+BEST CLUSTER → 4 similarity=0.7902
+Saved face 4 for photo 22, Face ID: 150
+BEST CLUSTER → 93 similarity=0.6046
+Photo 22 status → COMPLETED
+Indexed photo: 2E6A9937.JPG ID: 23
+Photo 23 status → PROCESSING
+Deleted old face records for photo 23
+Saved face 1 for photo 23, Face ID: 151
+BEST CLUSTER → 95 similarity=0.5197
+Created face cluster: 101
+Saved face 2 for photo 23, Face ID: 152
+BEST CLUSTER → 66 similarity=0.1858
+Created face cluster: 102
+Saved face 3 for photo 23, Face ID: 153
+BEST CLUSTER → 2 similarity=0.6082
+Saved face 4 for photo 23, Face ID: 154
+BEST CLUSTER → 9 similarity=0.3135
+Created face cluster: 103
+Photo 23 status → COMPLETED
+Indexed photo: 2E6A9698.JPG ID: 24
+Photo 24 status → PROCESSING
+Deleted old face records for photo 24
+Saved face 1 for photo 24, Face ID: 155
+BEST CLUSTER → 103 similarity=0.1719
+Created face cluster: 104
+Saved face 2 for photo 24, Face ID: 156
+BEST CLUSTER → 42 similarity=0.8206
+Saved face 3 for photo 24, Face ID: 157
+BEST CLUSTER → 85 similarity=0.2565
+Created face cluster: 105
+Saved face 4 for photo 24, Face ID: 158
+BEST CLUSTER → 75 similarity=0.7923
+Saved face 5 for photo 24, Face ID: 159
+BEST CLUSTER → 77 similarity=0.7457
+Saved face 6 for photo 24, Face ID: 160
+BEST CLUSTER → 2 similarity=0.6047
+Saved face 7 for photo 24, Face ID: 161
+BEST CLUSTER → 8 similarity=0.7682
+Saved face 8 for photo 24, Face ID: 162
+BEST CLUSTER → 76 similarity=0.7872
+Saved face 9 for photo 24, Face ID: 163
+BEST CLUSTER → 94 similarity=0.2367
+Created face cluster: 106
+Photo 24 status → COMPLETED
+Indexed photo: 2E6A9994.JPG ID: 25
+Photo 25 status → PROCESSING
+Deleted old face records for photo 25
+Saved face 1 for photo 25, Face ID: 164
+BEST CLUSTER → 43 similarity=0.7346
+Saved face 2 for photo 25, Face ID: 165
+BEST CLUSTER → 2 similarity=0.6261
+Photo 25 status → COMPLETED
+Indexed photo: 2E6A9768.JPG ID: 26
+Photo 26 status → PROCESSING
+Deleted old face records for photo 26
+Saved face 1 for photo 26, Face ID: 166
+BEST CLUSTER → 43 similarity=0.7095
+Saved face 2 for photo 26, Face ID: 167
+BEST CLUSTER → 2 similarity=0.5998
+Created face cluster: 107
+Saved face 3 for photo 26, Face ID: 168
+BEST CLUSTER → 42 similarity=0.8357
+Photo 26 status → COMPLETED
+Indexed photo: 2E6A9753.JPG ID: 27
+Photo 27 status → PROCESSING
+Deleted old face records for photo 27
+Saved face 1 for photo 27, Face ID: 169
+BEST CLUSTER → 100 similarity=0.3129
+Created face cluster: 108
+Saved face 2 for photo 27, Face ID: 170
+BEST CLUSTER → 33 similarity=0.5517
+Created face cluster: 109
+Saved face 3 for photo 27, Face ID: 171
+BEST CLUSTER → 107 similarity=0.7849
+Saved face 4 for photo 27, Face ID: 172
+BEST CLUSTER → 99 similarity=0.2639
+Created face cluster: 110
+Saved face 5 for photo 27, Face ID: 173
+BEST CLUSTER → 109 similarity=0.2181
+Created face cluster: 111
+Saved face 6 for photo 27, Face ID: 174
+BEST CLUSTER → 111 similarity=0.2660
+Created face cluster: 112
+Saved face 7 for photo 27, Face ID: 175
+BEST CLUSTER → 110 similarity=0.2562
+Created face cluster: 113
+Photo 27 status → COMPLETED
+Indexed photo: 2E6A9814.JPG ID: 28
+Photo 28 status → PROCESSING
+Deleted old face records for photo 28
+Saved face 1 for photo 28, Face ID: 176
+BEST CLUSTER → 8 similarity=0.7526
+Saved face 2 for photo 28, Face ID: 177
+BEST CLUSTER → 107 similarity=0.9596
+Saved face 3 for photo 28, Face ID: 178
+BEST CLUSTER → 10 similarity=0.7371
+Photo 28 status → COMPLETED
+Indexed photo: 2E6A9888.JPG ID: 29
+Photo 29 status → PROCESSING
+Deleted old face records for photo 29
+Saved face 1 for photo 29, Face ID: 179
+BEST CLUSTER → 104 similarity=0.8546
+Saved face 2 for photo 29, Face ID: 180
+BEST CLUSTER → 107 similarity=0.8886
+Saved face 3 for photo 29, Face ID: 181
+BEST CLUSTER → 80 similarity=0.2752
+Created face cluster: 114
+Photo 29 status → COMPLETED
+Indexed photo: 2E6A9889.JPG ID: 30
+Photo 30 status → PROCESSING
+Deleted old face records for photo 30
+Saved face 1 for photo 30, Face ID: 182
+BEST CLUSTER → 104 similarity=0.8517
+Saved face 2 for photo 30, Face ID: 183
+BEST CLUSTER → 107 similarity=0.9075
+Saved face 3 for photo 30, Face ID: 184
+BEST CLUSTER → 114 similarity=0.8989
+Photo 30 status → COMPLETED

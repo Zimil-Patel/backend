@@ -3,7 +3,7 @@ from pathlib import Path
 import cv2
 import insightface
 
-print("Loading face AI Model...")
+##print("Loading face AI Model...")
 
 face_model = insightface.app.FaceAnalysis(
     name="buffalo_l",
@@ -15,12 +15,12 @@ face_model.prepare(
     det_size=(640, 640),
 )
 
-print("Face id model loaded")
+##print("Face id model loaded")
 
 
 def detectFaces(file_path: str):
 
-    print(f"Loading image: {file_path}")
+    ##print(f"Loading image: {file_path}")
 
     image_path = Path(file_path)
 
@@ -32,11 +32,11 @@ def detectFaces(file_path: str):
     if image is None:
         raise ValueError(f"Could not load image: {file_path}")
 
-    print("Running face detection...")
+    ##print("Running face detection...")
 
     detected_faces = face_model.get(image)
 
-    print(f"Faces detected: {len(detected_faces)}")
+    ##print(f"Faces detected: {len(detected_faces)}")
 
     results = []
 
@@ -47,14 +47,14 @@ def detectFaces(file_path: str):
 
         embedding = face.embedding
 
-        print()
-        print(f"Face {face_index}")
+        ##print()
+        ##print(f"Face {face_index}")
 
-        print("Bounding box:", bbox)
+        ##print("Bounding box:", bbox)
 
-        print("Detection score:", detection_score)
+        ##print("Detection score:", detection_score)
 
-        print("Embedding dimensions:", len(embedding))
+        ##print("Embedding dimensions:", len(embedding))
 
         results.append(
             {

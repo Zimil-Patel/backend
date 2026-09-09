@@ -38,7 +38,7 @@ def waitUntilFileCopyFinish(file_path: Path, checks: int = 2, wait_seconds: int 
 
         current_size = file_path.stat().st_size
 
-        print(f"checking {file_path.name},{current_size:,} bytes")
+        #print(f"checking {file_path.name},{current_size:,} bytes")
 
         if current_size == previous_size:
             stable_count += 1
@@ -66,15 +66,15 @@ class PhotoEventHandler(FileSystemEventHandler):
         if extension not in IMAGE_EXTENSIONS:
             return
 
-        print(f"New photo detected: {path}")
+        #print(f"New photo detected: {path}")
 
         is_stable = waitUntilFileCopyFinish(path)
 
         if not is_stable:
-            print(f"File disappeared {path}")
+            #print(f"File disappeared {path}")
             return
 
-        print(f"File is ready {path}")
+        #print(f"File is ready {path}")
 
         # handle into sqlite database
         project_name = path.parent.parent.name
@@ -84,11 +84,11 @@ class PhotoEventHandler(FileSystemEventHandler):
 
         event_id = getOrCreateEvent(project_id, event_name)
 
-        print(f"calculating hash: {path.name}")
+        #print(f"calculating hash: {path.name}")
 
         file_hash = calculateFileHash(path)
 
-        print(f"calculated hash: {file_hash}")
+        #print(f"calculated hash: {file_hash}")
 
         # save photo with hash
         photo_id = createPhoto(
@@ -113,7 +113,7 @@ def start_watcher(photo_root: Path):
     if not photo_root.exists():
         raise RuntimeError(f"Photo directory does not exist: {photo_root}")
 
-    print(f"Watching: {photo_root}")
+    #print(f"Watching: {photo_root}")
 
     event_handler = PhotoEventHandler()
 

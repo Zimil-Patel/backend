@@ -24,13 +24,13 @@ def addPhotoJob(photo_id: int, file_path: str):
         }
     )
 
-    print(f"Added photo {photo_id} to processing queue")
+    #print(f"Added photo {photo_id} to processing queue")
 
 
 # process one by one photo from queue
 def processPhoto(photo_id: int, file_path: str):
 
-    print(f"Processing photo {photo_id}: {file_path}")
+    #print(f"Processing photo {photo_id}: {file_path}")
 
     try:
         updatePhotoStatus(photo_id, "PROCESSING")
@@ -42,7 +42,7 @@ def processPhoto(photo_id: int, file_path: str):
 
         faces = detectFaces(file_path)
 
-        print(f"Photo {photo_id}: {len(faces)} faces detected")
+        #print(f"Photo {photo_id}: {len(faces)} faces detected")
 
         for face in faces:
             face_index = face["face_index"]
@@ -81,22 +81,22 @@ def processPhoto(photo_id: int, file_path: str):
             )
 
             cluster_id = assignFaceToCluster(face_id=face_id, embedding=embedding)
-            print(f"Face {face_id} → Cluster {cluster_id}")
+            #print(f"Face {face_id} → Cluster {cluster_id}")
 
         updatePhotoStatus(photo_id, "COMPLETED")
 
-        print(f"Finished photo {photo_id}")
+        ##print(f"Finished photo {photo_id}")
 
     except Exception as error:
         updatePhotoStatus(photo_id, "FAILED")
 
-        print(f"Failed photo {photo_id}: {error}")
+        #print(f"Failed photo {photo_id}: {error}")
 
 
 # actual worker
 def worker():
 
-    print("Photo processing worker started")
+    #print("Photo processing worker started")
 
     while True:
         try:

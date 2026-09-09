@@ -44,11 +44,17 @@ def findBestCluster(embedding: bytes):
 
         similarity = cosineSimilarity(embedding, representative)
 
-        print(f"Face similarity → Cluster {cluster_id}: {similarity:.4f}")
+        # print(f"Face similarity → Cluster {cluster_id}: {similarity:.4f}")
 
         if similarity > best_similarity:
             best_cluster_id = cluster_id
             best_similarity = similarity
+
+#     print(
+#     f"BEST CLUSTER → "
+#     f"{best_cluster_id} "
+#     f"similarity={best_similarity:.4f}"
+# )
 
     if best_similarity < MATCH_THRESHOLD:
         return None, best_similarity
@@ -64,11 +70,11 @@ def assignFaceToCluster(face_id: int, embedding):
     cluster_id, similarity = findBestCluster(embedding)
 
     if cluster_id is not None:
-        print(
-            f"Face {face_id} matched "
-            f"Cluster {cluster_id} "
-            f"(similarity: {similarity:.4f})"
-        )
+        # print(
+        #     f"Face {face_id} matched "
+        #     f"Cluster {cluster_id} "
+        #     f"(similarity: {similarity:.4f})"
+        # )
 
         addFaceToCluster(face_id, cluster_id, similarity)
 

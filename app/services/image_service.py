@@ -172,7 +172,7 @@ def createFaceThumbnail(
         quality=85,
     )
 
-    print(f"Face thumbnail saved: {thumbnail_path}")
+    # #print(f"Face thumbnail saved: {thumbnail_path}")
 
     # Return the final path so the caller can store it.
     return str(thumbnail_path.resolve())

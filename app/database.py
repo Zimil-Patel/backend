@@ -2,6 +2,7 @@ import hashlib
 import sqlite3
 from datetime import datetime
 from pathlib import Path
+import numpy as np
 
 BACKEND_ROOT = Path(__file__).resolve().parent.parent
 
@@ -510,32 +511,135 @@ def createFaceCluster(embedding: bytes):
 
 
 # add member faces to cluster
-def addFaceToCluster(face_id: int, cluster_id: int, similarity: float | None = None):
+def addFaceToCluster(
+    face_id: int,
+    cluster_id: int,
+    similarity: float | None = None,
+):
 
     connection = getConnection()
-
     cursor = connection.cursor()
 
     created_at = datetime.now().isoformat()
 
-    cursor.execute(
-        """
-            INSERT INTO face_cluster_members(face_id, cluster_id, similarity, created_at) VALUES (?,?,?,?)
-        """,
-        (face_id, cluster_id, similarity, created_at),
-    )
+    try:
+        cursor.execute(
+            """
+            INSERT INTO face_cluster_members(
+                face_id,
+                cluster_id,
+                similarity,
+                created_at
+            )
+            VALUES (?, ?, ?, ?)
+            """,
+            (
+                face_id,
+                cluster_id,
+                similarity,
+                created_at,
+            ),
+        )
 
-    cursor.execute(
-        """
-            UPDATE face_clusters SET face_count = face_count + 1, updated_at = ? WHERE id = ?
-        """,
-        (created_at, cluster_id),
-    )
+        cursor.execute(
+            """
+            UPDATE face_clusters
+            SET face_count = face_count + 1,
+                updated_at = ?
+            WHERE id = ?
+            """,
+            (
+                created_at,
+                cluster_id,
+            ),
+        )
 
-    connection.commit()
+        connection.commit()
 
-    connection.close()
+    finally:
+        connection.close()
 
+    # Recalculate the cluster representative
+    # after adding the new face.
+    updateClusterRepresentative(cluster_id)
+
+def updateClusterRepresentative(cluster_id: int):
+    """
+    Recalculate the representative embedding for a cluster.
+
+    We calculate the average of all face embeddings belonging
+    to this cluster so that the representative is not dependent
+    on the very first face that created the cluster.
+    """
+
+    connection = getConnection()
+    cursor = connection.cursor()
+
+    try:
+        cursor.execute(
+            """
+            SELECT f.embedding
+            FROM faces AS f
+            JOIN face_cluster_members AS fcm
+                ON f.id = fcm.face_id
+            WHERE fcm.cluster_id = ?
+            """,
+            (cluster_id,),
+        )
+
+        rows = cursor.fetchall()
+
+        if not rows:
+            return
+
+        embeddings = []
+
+        for row in rows:
+            embedding = np.frombuffer(
+                row[0],
+                dtype=np.float32,
+            )
+
+            embeddings.append(embedding)
+
+        # Calculate the average embedding.
+        representative = np.mean(
+            embeddings,
+            axis=0,
+        )
+
+        # Normalize the averaged embedding.
+        norm = np.linalg.norm(representative)
+
+        if norm == 0:
+            return
+
+        representative = representative / norm
+
+        representative_bytes = representative.astype(
+            np.float32
+        ).tobytes()
+
+        created_at = datetime.now().isoformat()
+
+        cursor.execute(
+            """
+            UPDATE face_clusters
+            SET representative_embedding = ?,
+                updated_at = ?
+            WHERE id = ?
+            """,
+            (
+                representative_bytes,
+                created_at,
+                cluster_id,
+            ),
+        )
+
+        connection.commit()
+
+    finally:
+        connection.close()
 
 def updateFaceThumbnailPath(face_id: int, thumbnail_path: str):
 
@@ -559,4 +663,4 @@ def updateFaceThumbnailPath(face_id: int, thumbnail_path: str):
 
     connection.close()
 
-    print(f"Thumbnail path saved for Face {face_id}")
+    # print(f"Thumbnail path saved for Face {face_id}")

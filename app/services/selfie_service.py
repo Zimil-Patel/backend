@@ -80,7 +80,7 @@ def searchSelfie(selfie_bytes: bytes, project_id: int):
                 representative_embedding,
             )
 
-            print(f"Selfie similarity → Cluster {cluster_id}: {similarity:.4f}")
+            # print(f"Selfie similarity → Cluster {cluster_id}: {similarity:.4f}")
 
             if similarity > best_similarity:
                 best_similarity = similarity
