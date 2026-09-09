@@ -433,3 +433,49 @@ async def searchProjectBySelfie(project_id: int, selfie: UploadFile = File(...))
     result = searchSelfie(selfie_bytes=selfie_bytes, project_id=project_id)
 
     return result
+
+
+@router.get("/photos/{photo_id}/thumbnail")
+def getPhotoThumbnail(photo_id: int):
+    connection = getConnection()
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+        SELECT thumbnail_path
+        FROM photos
+        WHERE id = ?
+        """,
+        (photo_id,),
+    )
+
+    row = cursor.fetchone()
+
+    connection.close()
+
+    # Photo does not exist.
+    if row is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Photo not found",
+        )
+
+    thumbnail_path = row[0]
+
+    # Thumbnail has not been generated yet.
+    if not thumbnail_path:
+        raise HTTPException(
+            status_code=404,
+            detail="Photo thumbnail not found",
+        )
+
+    thumbnail_file = Path(thumbnail_path)
+
+    # Thumbnail path exists in DB but the actual file is missing.
+    if not thumbnail_file.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Photo thumbnail file not found",
+        )
+
+    return FileResponse(thumbnail_file)

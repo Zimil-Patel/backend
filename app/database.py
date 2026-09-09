@@ -80,6 +80,7 @@ def initializeDatabase():
                 filename TEXT NOT NULL,
                 file_path TEXT NOT NULL,
                 file_hash TEXT,
+                thumbnail_path TEXT,
                 status TEXT NOT NULL,
                 created_at TEXT NOT NULL,
 
@@ -89,6 +90,36 @@ def initializeDatabase():
             )
         """
     )
+
+    # ---------------------------------------------------------
+    # ADD THUMBNAIL PATH TO EXISTING PHOTOS TABLE
+    # ---------------------------------------------------------
+    #
+    # This is needed because the photos table may already exist
+    # from earlier development.
+    #
+    # SQLite will not add a new column automatically when using
+    # CREATE TABLE IF NOT EXISTS.
+    # ---------------------------------------------------------
+
+    cursor.execute(
+        """
+        PRAGMA table_info(photos)
+        """
+    )
+
+    photo_columns = [row[1] for row in cursor.fetchall()]
+
+    # Add thumbnail_path only if it doesn't already exist.
+    if "thumbnail_path" not in photo_columns:
+        cursor.execute(
+            """
+            ALTER TABLE photos
+            ADD COLUMN thumbnail_path TEXT
+            """
+        )
+
+        print("Added thumbnail_path column to photos table")
 
     # create faces table
     cursor.execute(
@@ -357,6 +388,35 @@ def createPhoto(
     finally:
         connection.close()
 
+
+def updatePhotoThumbnailPath(
+    photo_id: int,
+    thumbnail_path: str,
+):
+    """
+    Save the generated thumbnail path for a photo.
+    """
+
+    connection = getConnection()
+    cursor = connection.cursor()
+
+    try:
+        cursor.execute(
+            """
+            UPDATE photos
+            SET thumbnail_path = ?
+            WHERE id = ?
+            """,
+            (
+                thumbnail_path,
+                photo_id,
+            ),
+        )
+
+        connection.commit()
+
+    finally:
+        connection.close()
 
 def updatePhotoStatus(photo_id: int, status: str):
 

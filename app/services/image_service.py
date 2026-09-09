@@ -176,3 +176,55 @@ def createFaceThumbnail(
 
     # Return the final path so the caller can store it.
     return str(thumbnail_path.resolve())
+
+
+def createPhotoThumbnail(
+    file_path: str,
+    output_path: str,
+    max_size: tuple[int, int] = (600, 600),
+):
+    """
+    Create a smaller JPEG thumbnail for a normal photo.
+
+    The original photo is never modified.
+
+    max_size controls the maximum width and height
+    of the generated thumbnail.
+    """
+
+    image_path = Path(file_path)
+
+    if not image_path.exists():
+        raise FileNotFoundError(
+            f"Photo not found: {file_path}"
+        )
+
+    # Open the original image.
+    image = Image.open(image_path)
+
+    # Respect the camera's EXIF orientation.
+    image = ImageOps.exif_transpose(image)
+
+    # Convert to RGB so the thumbnail can always be saved as JPEG.
+    if image.mode != "RGB":
+        image = image.convert("RGB")
+
+    # Reduce the image while keeping its aspect ratio.
+    image.thumbnail(max_size)
+
+    # Make sure the output directory exists.
+    output_file = Path(output_path)
+    output_file.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    # Save the smaller image.
+    image.save(
+        output_file,
+        format="JPEG",
+        quality=82,
+        optimize=True,
+    )
+
+    return str(output_file)

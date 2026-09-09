@@ -7,10 +7,11 @@ from app.database import (
     saveFace,
     updateFaceThumbnailPath,
     updatePhotoStatus,
+    updatePhotoThumbnailPath
 )
 from app.face_engine import detectFaces
 from app.face_matcher import assignFaceToCluster
-from app.services.image_service import createFaceThumbnail
+from app.services.image_service import createFaceThumbnail, createPhotoThumbnail
 
 photo_queue = queue.Queue()
 
@@ -41,6 +42,27 @@ def processPhoto(photo_id: int, file_path: str):
         deleteFacesForPhoto(photo_id)
 
         faces = detectFaces(file_path)
+
+        # -------------------------------------------------
+        # CREATE PHOTO THUMBNAIL
+        # -------------------------------------------------
+
+        photo_thumbnail_path = (
+            Path(__file__).resolve().parent.parent
+            / "data"
+            / "photo_thumbnails"
+            / f"photo_{photo_id}.jpg"
+        )
+
+        saved_photo_thumbnail_path = createPhotoThumbnail(
+            file_path=file_path,
+            output_path=str(photo_thumbnail_path),
+        )
+
+        updatePhotoThumbnailPath(
+            photo_id=photo_id,
+            thumbnail_path=saved_photo_thumbnail_path,
+        )
 
         #print(f"Photo {photo_id}: {len(faces)} faces detected")
 
