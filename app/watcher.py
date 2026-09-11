@@ -1,3 +1,4 @@
+from email.mime import image
 import time
 from pathlib import Path
 
@@ -11,6 +12,8 @@ from app.database import (
     getOrCreateProject,
 )
 from app.processor import addPhotoJob
+from PIL import Image
+
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".heic"}
 
@@ -88,6 +91,10 @@ class PhotoEventHandler(FileSystemEventHandler):
 
         file_hash = calculateFileHash(path)
 
+        with Image.open(path) as img:
+            photo_width = img.width
+            photo_height = img.height
+
         #print(f"calculated hash: {file_hash}")
 
         # save photo with hash
@@ -98,6 +105,8 @@ class PhotoEventHandler(FileSystemEventHandler):
                 path.resolve(),
             ),
             file_hash=file_hash,
+            width=photo_width,
+            height=photo_height
         )
 
         if photo_id is None:

@@ -80,6 +80,8 @@ def initializeDatabase():
                 filename TEXT NOT NULL,
                 file_path TEXT NOT NULL,
                 file_hash TEXT,
+                 width INTEGER,
+                height INTEGER,
                 thumbnail_path TEXT,
                 status TEXT NOT NULL,
                 created_at TEXT NOT NULL,
@@ -320,6 +322,8 @@ def calculateFileHash(file_path: Path):
     return sha256.hexdigest()
 
 
+
+
 # check if hash already exists (photo already exists
 def photoHashExists(file_hash: str):
 
@@ -343,7 +347,7 @@ def photoHashExists(file_hash: str):
 
 # store photo
 def createPhoto(
-    event_id: str, filename: str, file_path: str, file_hash: str | None = None
+     height: int, width: int, event_id: str, filename: str, file_path: str, file_hash: str | None = None
 ):
 
     # check hash
@@ -360,7 +364,7 @@ def createPhoto(
     try:
         cursor.execute(
             """
-            INSERT INTO photos(event_id, filename, file_path, file_hash, status, created_at) VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO photos(event_id, filename, file_path, file_hash, status, created_at, height, width) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 event_id,
@@ -369,6 +373,8 @@ def createPhoto(
                 file_hash,
                 "READY",
                 created_at,
+                height,
+                width,
             ),
         )
 

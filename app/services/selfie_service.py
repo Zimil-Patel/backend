@@ -105,7 +105,9 @@ def searchSelfie(selfie_bytes: bytes, project_id: int):
                     p.id,
                     p.filename,
                     p.status,
-                    p.created_at
+                    p.created_at,
+                    p.height,
+                    p.width
 
                 FROM face_cluster_members AS fcm
 
@@ -142,6 +144,8 @@ def searchSelfie(selfie_bytes: bytes, project_id: int):
                     "filename": row[1],
                     "status": row[2],
                     "created_at": row[3],
+                    "height": row[4],
+                    "width": row[5]
                 }
             )
 

@@ -68,7 +68,7 @@ def getEventsPhotos(event_id: int):
 
     cursor.execute(
         """
-            SELECT id, filename, status, created_at FROM photos WHERE event_id = ? ORDER BY id ASC
+            SELECT id, filename, status, created_at, height, width FROM photos WHERE event_id = ? ORDER BY id ASC
         """,
         (event_id,),
     )
@@ -86,6 +86,8 @@ def getEventsPhotos(event_id: int):
                 "filename": row[1],
                 "status": row[2],
                 "created_at": row[3],
+                "height": row[4],
+                "width": row[5]
             }
         )
 
@@ -156,7 +158,9 @@ def getPhotosForFace(face_id: int, project_id: int):
             photos.id,
             photos.filename,
             photos.status,
-            photos.created_at
+            photos.created_at,
+            photos.height,
+            photos.width
 
         FROM face_cluster_members
 
@@ -191,6 +195,8 @@ def getPhotosForFace(face_id: int, project_id: int):
                 "filename": row[1],
                 "status": row[2],
                 "created_at": row[3],
+                "height": row[4],
+                "width": row[5]
             }
         )
 
