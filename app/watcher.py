@@ -4,6 +4,7 @@ from pathlib import Path
 
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
+from app.services.image_service import getPhotoDimensions
 
 from app.database import (
     calculateFileHash,
@@ -12,8 +13,6 @@ from app.database import (
     getOrCreateProject,
 )
 from app.processor import addPhotoJob
-from PIL import Image
-
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".heic"}
 
@@ -91,9 +90,7 @@ class PhotoEventHandler(FileSystemEventHandler):
 
         file_hash = calculateFileHash(path)
 
-        with Image.open(path) as img:
-            photo_width = img.width
-            photo_height = img.height
+        photo_width, photo_height = getPhotoDimensions(str(path))
 
         #print(f"calculated hash: {file_hash}")
 

@@ -3,6 +3,9 @@ from pathlib import Path
 
 from PIL import Image, ImageOps
 
+from pillow_heif import register_heif_opener
+register_heif_opener()
+
 
 # ---------------------------------------------------------
 # CREATE FACE THUMBNAIL
@@ -228,3 +231,30 @@ def createPhotoThumbnail(
     )
 
     return str(output_file)
+
+def getPhotoDimensions(file_path: str):
+    """
+    Get the photo dimensions after applying EXIF orientation.
+
+    Some cameras/phones store a portrait photo as landscape pixel
+    dimensions and use EXIF orientation to tell viewers to rotate it.
+
+    We apply the EXIF orientation first so the width and height
+    stored in the database represent the way the photo is actually
+    displayed.
+    """
+    image_path = Path(file_path)
+
+    if not image_path.exists():
+        raise FileNotFoundError(
+            f"Photo not found: {file_path}"
+        )
+
+    with Image.open(image_path) as image:
+        # Apply EXIF orientation before reading dimensions.
+        oriented_image = ImageOps.exif_transpose(image)
+
+        return (
+            oriented_image.width,
+            oriented_image.height,
+        )

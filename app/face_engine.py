@@ -2,6 +2,25 @@ from pathlib import Path
 
 import cv2
 import insightface
+import numpy as np
+
+from PIL import Image, ImageOps
+from pillow_heif import register_heif_opener
+
+
+# ---------------------------------------------------------
+# ENABLE HEIC / HEIF SUPPORT
+# ---------------------------------------------------------
+#
+# This allows Pillow to open .HEIC and .HEIF files.
+#
+# Normal JPG/JPEG/PNG files will still use OpenCV below.
+register_heif_opener()
+
+
+# ---------------------------------------------------------
+# LOAD FACE AI MODEL
+# ---------------------------------------------------------
 
 ##print("Loading face AI Model...")
 
@@ -18,6 +37,10 @@ face_model.prepare(
 ##print("Face id model loaded")
 
 
+# ---------------------------------------------------------
+# DETECT FACES
+# ---------------------------------------------------------
+
 def detectFaces(file_path: str):
 
     ##print(f"Loading image: {file_path}")
@@ -25,12 +48,56 @@ def detectFaces(file_path: str):
     image_path = Path(file_path)
 
     if not image_path.exists():
-        raise FileNotFoundError(f"Image not found: {file_path}")
+        raise FileNotFoundError(
+            f"Image not found: {file_path}"
+        )
 
-    image = cv2.imread(image_path)
+    # Get the file extension.
+    extension = image_path.suffix.lower()
 
+    # -----------------------------------------------------
+    # LOAD HEIC / HEIF WITH PILLOW
+    # -----------------------------------------------------
+    #
+    # OpenCV's cv2.imread() cannot load your HEIC files.
+    #
+    # Therefore, only HEIC/HEIF files use Pillow.
+    if extension in {".heic", ".heif"}:
+
+        image = Image.open(image_path)
+
+        # Respect the camera's EXIF orientation.
+        image = ImageOps.exif_transpose(image)
+
+        # Convert to RGB.
+        image = image.convert("RGB")
+
+        # Convert Pillow image to NumPy array.
+        image = np.array(image)
+
+        # Pillow uses RGB.
+        # OpenCV / InsightFace expects BGR.
+        image = cv2.cvtColor(
+            image,
+            cv2.COLOR_RGB2BGR,
+        )
+
+    # -----------------------------------------------------
+    # EXISTING IMAGE LOADING
+    # -----------------------------------------------------
+    #
+    # Keep the existing OpenCV path for all other formats.
+    else:
+
+        image = cv2.imread(
+            str(image_path)
+        )
+
+    # Make sure the image was loaded successfully.
     if image is None:
-        raise ValueError(f"Could not load image: {file_path}")
+        raise ValueError(
+            f"Could not load image: {file_path}"
+        )
 
     ##print("Running face detection...")
 
@@ -40,21 +107,17 @@ def detectFaces(file_path: str):
 
     results = []
 
-    for face_index, face in enumerate(detected_faces, start=1):
+    for face_index, face in enumerate(
+        detected_faces,
+        start=1,
+    ):
         bbox = face.bbox.tolist()
 
-        detection_score = float(face.det_score)
+        detection_score = float(
+            face.det_score
+        )
 
         embedding = face.embedding
-
-        ##print()
-        ##print(f"Face {face_index}")
-
-        ##print("Bounding box:", bbox)
-
-        ##print("Detection score:", detection_score)
-
-        ##print("Embedding dimensions:", len(embedding))
 
         results.append(
             {
