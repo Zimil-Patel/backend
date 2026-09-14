@@ -112,7 +112,7 @@ def processPhoto(photo_id: int, file_path: str):
     except Exception as error:
         updatePhotoStatus(photo_id, "FAILED")
 
-        print(f"Failed photo {photo_id}: {error}")
+        #print(f"Failed photo {photo_id}: {error}")
 
 
 # actual worker
