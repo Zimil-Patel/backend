@@ -31,7 +31,7 @@ def addPhotoJob(photo_id: int, file_path: str):
 # process one by one photo from queue
 def processPhoto(photo_id: int, file_path: str):
 
-    #print(f"Processing photo {photo_id}: {file_path}")
+    print(f"Processing photo {photo_id}: {file_path}")
 
     try:
         updatePhotoStatus(photo_id, "PROCESSING")
@@ -107,12 +107,12 @@ def processPhoto(photo_id: int, file_path: str):
 
         updatePhotoStatus(photo_id, "COMPLETED")
 
-        ##print(f"Finished photo {photo_id}")
+        print(f"Finished photo {photo_id}")
 
     except Exception as error:
         updatePhotoStatus(photo_id, "FAILED")
 
-        #print(f"Failed photo {photo_id}: {error}")
+        print(f"Failed photo {photo_id}: {error}")
 
 
 # actual worker
@@ -134,8 +134,6 @@ def worker():
 
 
 # start worker processing in background thread
-
-
 def startWorker():
 
     worker_thread = threading.Thread(target=worker, daemon=True, name="PhotoProcessor")

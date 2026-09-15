@@ -119,7 +119,7 @@ def start_watcher(photo_root: Path):
     if not photo_root.exists():
         raise RuntimeError(f"Photo directory does not exist: {photo_root}")
 
-    #print(f"Watching: {photo_root}")
+    print(f"Watching: {photo_root}")
 
     event_handler = PhotoEventHandler()
 
