@@ -8,6 +8,7 @@ from app.api import router
 from app.database import initializeDatabase
 from app.processor import startWorker
 from app.watcher import start_watcher
+from app.auth.firebase import initialize_firebase
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -17,6 +18,8 @@ app = FastAPI(
     title="Stories By Parin Photo server API",
     version="1.0.0",
 )
+
+initialize_firebase()
 
 app.add_middleware(
     CORSMiddleware,

@@ -6,6 +6,10 @@ from fastapi.responses import FileResponse
 from app.database import getConnection
 from app.services.selfie_service import searchSelfie
 
+from app.auth.dependencies import getCurrentFirebaseUser
+from fastapi import Depends
+from app.database.user_db import syncUser
+
 router = APIRouter()
 
 
@@ -443,6 +447,7 @@ async def searchProjectBySelfie(project_id: int, selfie: UploadFile = File(...))
 
 @router.get("/photos/{photo_id}/thumbnail")
 def getPhotoThumbnail(photo_id: int):
+
     connection = getConnection()
     cursor = connection.cursor()
 
@@ -485,3 +490,31 @@ def getPhotoThumbnail(photo_id: int):
         )
 
     return FileResponse(thumbnail_file)
+
+
+### Authtentication
+@router.get("/auth/me")
+def getCurrentUser(firebase_user=Depends(getCurrentFirebaseUser)):
+    firebase_uid = firebase_user["uid"]
+    email = firebase_user.get("email")
+    email_verified = firebase_user.get("email_verified", False)
+
+    display_name = firebase_user.get("name","") or ""
+
+    name_parts = display_name.strip().split(" ", 1)
+
+    first_name = name_parts[0] if len(name_parts) > 0 else ""
+    last_name = name_parts[1] if len(name_parts) > 1 else ""
+
+    user = syncUser(
+        firebase_uid=firebase_uid,
+        first_name=first_name,
+        last_name=last_name,
+        email=email,
+        email_verified=email_verified,
+    )
+
+    return {
+        "success": True,
+        "user": user
+    }
