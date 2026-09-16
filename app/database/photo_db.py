@@ -80,9 +80,10 @@ def createPhoto(
             status,
             created_at,
             width,
-            height
+            height,
+            is_favourite
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             event_id,
@@ -93,6 +94,7 @@ def createPhoto(
             created_at,
             width,
             height,
+            0,  # Default value for is_favourite
         ),
     )
 
@@ -157,3 +159,35 @@ def updatePhotoStatus(
 
     connection.commit()
     connection.close()
+
+### Make favourtie un favourite photos
+def setPhotoFavouriteStatus(
+    photo_id: int,
+    is_favourite: bool,
+):
+    """
+    Set the favourite status of a photo.
+    """
+
+    connection = getConnection()
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+        UPDATE photos
+        SET is_favourite = ?
+        WHERE id = ?
+        """,
+        (
+            1 if is_favourite else 0,
+            photo_id,
+        ),
+    )
+
+    connection.commit()
+
+    updated_rows = cursor.rowcount
+
+    connection.close()
+
+    return updated_rows > 0

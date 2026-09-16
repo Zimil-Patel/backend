@@ -15,6 +15,7 @@ from .photo_db import (
     createPhoto,
     updatePhotoThumbnailPath,
     updatePhotoStatus,
+    setPhotoFavouriteStatus,
 )
 
 from .face_db import (

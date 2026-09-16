@@ -1,4 +1,5 @@
 import numpy as np
+from datetime import datetime
 
 from app.database.connection import getConnection
 
@@ -42,17 +43,25 @@ def createFaceCluster(embedding: bytes):
     connection = getConnection()
     cursor = connection.cursor()
 
+    # SQLite requires both timestamps because the
+    # database columns are defined as NOT NULL.
+    now = datetime.now().isoformat()
+
     cursor.execute(
         """
         INSERT INTO face_clusters (
             representative_embedding,
-            face_count
+            face_count,
+            created_at,
+            updated_at
         )
-        VALUES (?, ?)
+        VALUES (?, ?, ?, ?)
         """,
         (
             embedding,
             0,
+            now,
+            now,
         ),
     )
 
@@ -80,29 +89,39 @@ def addFaceToCluster(
     connection = getConnection()
     cursor = connection.cursor()
 
+    # Each cluster member also needs its creation timestamp.
+    created_at = datetime.now().isoformat()
+
     cursor.execute(
         """
         INSERT INTO face_cluster_members (
             cluster_id,
             face_id,
-            similarity
+            similarity,
+            created_at
         )
-        VALUES (?, ?, ?)
+        VALUES (?, ?, ?, ?)
         """,
         (
             cluster_id,
             face_id,
             similarity,
+            created_at,
         ),
     )
 
+    # Increase the number of faces belonging to this cluster.
     cursor.execute(
         """
         UPDATE face_clusters
-        SET face_count = face_count + 1
+        SET face_count = face_count + 1,
+            updated_at = ?
         WHERE id = ?
         """,
-        (cluster_id,),
+        (
+            created_at,
+            cluster_id,
+        ),
     )
 
     connection.commit()
@@ -176,15 +195,19 @@ def updateClusterRepresentative(cluster_id: int):
         np.float32
     ).tobytes()
 
+    # Save the new representative and update the timestamp.
+    updated_at = datetime.now().isoformat()
+
     cursor.execute(
         """
         UPDATE face_clusters
         SET representative_embedding = ?,
-            updated_at = CURRENT_TIMESTAMP
+            updated_at = ?
         WHERE id = ?
         """,
         (
             representative_embedding,
+            updated_at,
             cluster_id,
         ),
     )

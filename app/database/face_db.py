@@ -1,11 +1,11 @@
 from app.database.connection import getConnection
-
+from datetime import datetime
 
 def saveFace(
     photo_id: int,
     face_index: int,
     bbox: str,
-    score: float,
+    detection_score: float,
     embedding: bytes,
 ):
     """
@@ -18,23 +18,27 @@ def saveFace(
     connection = getConnection()
     cursor = connection.cursor()
 
+    created_at = datetime.now().isoformat()
+
     cursor.execute(
         """
         INSERT INTO faces (
             photo_id,
             face_index,
             bbox,
-            score,
-            embedding
+            detection_score,
+            embedding,
+            created_at
         )
-        VALUES (?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?)
         """,
         (
             photo_id,
             face_index,
             bbox,
-            score,
+            detection_score,
             embedding,
+            created_at
         ),
     )
 

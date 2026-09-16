@@ -76,7 +76,7 @@ def assignFaceToCluster(face_id: int, embedding):
         #     f"(similarity: {similarity:.4f})"
         # )
 
-        addFaceToCluster(face_id, cluster_id, similarity)
+        addFaceToCluster(face_id=face_id, cluster_id=cluster_id, similarity=similarity)
 
         return cluster_id
 

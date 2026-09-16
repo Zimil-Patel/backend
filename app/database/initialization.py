@@ -60,6 +60,7 @@ def initializeDatabase():
             height INTEGER,
             thumbnail_path TEXT,
             status TEXT NOT NULL,
+            is_favourite INTEGER NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL,
 
             FOREIGN KEY (event_id) REFERENCES events(id),

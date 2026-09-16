@@ -9,6 +9,7 @@ from app.services.selfie_service import searchSelfie
 from app.auth.dependencies import getCurrentFirebaseUser
 from fastapi import Depends
 from app.database.user_db import syncUser
+from app.database.photo_db import setPhotoFavouriteStatus
 
 router = APIRouter()
 
@@ -72,7 +73,7 @@ def getEventsPhotos(event_id: int):
 
     cursor.execute(
         """
-            SELECT id, filename, status, created_at, height, width FROM photos WHERE event_id = ? ORDER BY id ASC
+            SELECT id, filename, status, created_at, height, width, is_favourite FROM photos WHERE event_id = ? ORDER BY id ASC
         """,
         (event_id,),
     )
@@ -91,7 +92,8 @@ def getEventsPhotos(event_id: int):
                 "status": row[2],
                 "created_at": row[3],
                 "height": row[4],
-                "width": row[5]
+                "width": row[5],
+                "is_favourite": row[6]
             }
         )
 
@@ -164,7 +166,8 @@ def getPhotosForFace(face_id: int, project_id: int):
             photos.status,
             photos.created_at,
             photos.height,
-            photos.width
+            photos.width,
+            photos.is_favourite
 
         FROM face_cluster_members
 
@@ -200,7 +203,8 @@ def getPhotosForFace(face_id: int, project_id: int):
                 "status": row[2],
                 "created_at": row[3],
                 "height": row[4],
-                "width": row[5]
+                "width": row[5],
+                "is_favourite": row[6]
             }
         )
 
@@ -491,6 +495,35 @@ def getPhotoThumbnail(photo_id: int):
 
     return FileResponse(thumbnail_file)
 
+@router.put("/photos/{photo_id}/favourite")
+def setPhotoFavourite(
+    photo_id: int,
+    is_favourite: bool,
+):
+    """
+    Favourite or unfavourite a photo.
+
+    True  -> Favourite the photo
+    False -> Unfavourite the photo
+    """
+
+    updated = setPhotoFavouriteStatus(
+        photo_id=photo_id,
+        is_favourite=is_favourite,
+    )
+
+    # If no photo exists with this ID, return 404.
+    if not updated:
+        raise HTTPException(
+            status_code=404,
+            detail="Photo not found",
+        )
+
+    return {
+        "success": True,
+        "photo_id": photo_id,
+        "is_favourite": is_favourite,
+    }
 
 ### Authtentication
 @router.get("/auth/me")
