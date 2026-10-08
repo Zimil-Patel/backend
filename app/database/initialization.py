@@ -27,6 +27,22 @@ def initializeDatabase():
     )
 
     # ---------------------------------------------------------
+    # GALLERIES
+    # ---------------------------------------------------------
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS client_galleries(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id INTEGER NOT NULL UNIQUE,
+            share_token TEXT NOT NULL UNIQUE,
+            is_enabled INTEGER NOT NULL DEFAULT 1,
+            created_by_user_id INTEGER,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY (project_id) REFERENCES projects(id)
+        )"""
+    )
+    # ---------------------------------------------------------
     # EVENTS
     # ---------------------------------------------------------
 

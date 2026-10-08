@@ -37,3 +37,10 @@ from .user_db import (
     updateUser,
     syncUser,
 )
+
+from .gallery_db import (
+    createGallery,
+    getGalleryByProjectId,
+    getGalleryBytoken,
+    setGalleryEnabled,
+)
