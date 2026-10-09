@@ -6,10 +6,11 @@ from fastapi.responses import FileResponse
 from app.database import getConnection
 from app.services.selfie_service import searchSelfie
 
-from app.auth.dependencies import getCurrentFirebaseUser
+from app.auth.dependencies import getCurrentFirebaseUser, getCurrentLocalUser
 from fastapi import Depends
 from app.database.user_db import syncUser
 from app.database.photo_db import setPhotoFavouriteStatus
+from app.database.gallery_db import getGalleryByProjectId, createGallery
 
 router = APIRouter()
 
@@ -527,27 +528,70 @@ def setPhotoFavourite(
 
 ### Authtentication
 @router.get("/auth/me")
-def getCurrentUser(firebase_user=Depends(getCurrentFirebaseUser)):
-    firebase_uid = firebase_user["uid"]
-    email = firebase_user.get("email")
-    email_verified = firebase_user.get("email_verified", False)
-
-    display_name = firebase_user.get("name","") or ""
-
-    name_parts = display_name.strip().split(" ", 1)
-
-    first_name = name_parts[0] if len(name_parts) > 0 else ""
-    last_name = name_parts[1] if len(name_parts) > 1 else ""
-
-    user = syncUser(
-        firebase_uid=firebase_uid,
-        first_name=first_name,
-        last_name=last_name,
-        email=email,
-        email_verified=email_verified,
-    )
+def getCurrentUser(user=Depends(getCurrentLocalUser)):
 
     return {
         "success": True,
         "user": user
     }
+
+
+def galleryToResponse(gallery):
+    """Convert a database gallery row into an API response."""
+
+    return {
+        "success": True,
+        "gallery": {
+            "id": gallery[0],
+            "project_id": gallery[1],
+            "share_token": gallery[2],
+            "is_enabled": bool(gallery[3]),
+            "created_by_user_id": gallery[4],
+            "created_at": gallery[5],
+            "updated_at": gallery[6],
+        },
+    }
+
+# create gallery 
+@router.post('/projects/{project_id}/gallery')
+def createProjectGallery(
+    project_id: int,
+    user=Depends(getCurrentLocalUser),
+):
+
+    connection = getConnection()
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+            SELECT id FROM
+            projects
+            WHERE id = ?
+        """,
+        (
+            project_id,
+        ),
+    )
+
+    project = cursor.fetchone()
+    connection.close()
+
+    if project is None:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Project not found"
+        )
+
+    gallery = getGalleryByProjectId(project_id)
+
+    if gallery is None:
+
+        createGallery(project_id=project_id, created_by_user_id=user['id'],)
+
+        gallery = getGalleryByProjectId(project_id)
+
+    return galleryToResponse(gallery)
+
+
+    
