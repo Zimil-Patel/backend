@@ -10,7 +10,12 @@ from app.auth.dependencies import getCurrentFirebaseUser, getCurrentLocalUser
 from fastapi import Depends
 from app.database.user_db import syncUser
 from app.database.photo_db import setPhotoFavouriteStatus
-from app.database.gallery_db import getGalleryByProjectId, createGallery
+from app.database.gallery_db import getGalleryByProjectId, createGallery, setGalleryEnabled
+from pydantic import BaseModel
+
+
+class GalleryStatusUpdate(BaseModel):
+    is_enabled: bool
 
 router = APIRouter()
 
@@ -593,5 +598,27 @@ def createProjectGallery(
 
     return galleryToResponse(gallery)
 
+#update is enabled in gallery
+@router.patch('/projects/{project_id}/gallery')
+def updatePrjectGalleryStatus(
+    project_id: int,
+    request: GalleryStatusUpdate,
+    user=Depends(getCurrentLocalUser)
+):
+    gallery = getGalleryByProjectId(project_id)
 
-    
+    if gallery is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Client gallery not found for this project",
+        )
+
+    updated = setGalleryEnabled(
+        gallery_id=gallery[0],
+        is_enabled=request.is_enabled,
+
+    )
+
+    gallery = getGalleryByProjectId(project_id)
+
+    return galleryToResponse(gallery)
