@@ -145,4 +145,65 @@ def setGalleryEnabled(
 
     return updated
 
+def ensureGalleryCreatorIsOwner(gallery_id: int) -> bool:
+
+    connection = getConnection()
+    cursor = connection.cursor()
+
+    try:
+
+        cursor.execute(
+            '''
+                SELECT 
+                    client_galleries.created_by_user_id,
+                    users.email
+                FROM client_galleries
+                JOIN users
+                    ON users.id = client_galleries.created_by_user_id
+                WHERE client_galleries.id = ?
+            ''',
+            (gallery_id,),
+        )
+
+        creator = cursor.fetchone()
+
+        if creator is None or not creator[1] or not creator[1].strip():
+            return False
+
+        user_id = creator[0]
+        email = creator[1].strip()
+        now = datetime.now().isoformat()
+
+        cursor.execute(
+            '''
+                INSERT INTO client_gallery_members (
+                    gallery_id,
+                    email,
+                    user_id,
+                    role,
+                    invited_by_user_id,
+                    created_at,
+                    updated_at
+                )
+
+                VALUES (?, ?, ? , 'owner', ?, ?, ?)
+
+                ON CONFLICT (gallery_id, email)
+                DO UPDATE SET
+                    user_id = excluded.user_id,
+                    role = 'owner',
+                    updated_at = excluded.updated_at
+            ''',
+            (gallery_id, email, user_id, user_id, now, now,),
+
+        )
+
+        connection.commit()
+        return True
+
+    finally:
+
+        connection.close()
+
+
 

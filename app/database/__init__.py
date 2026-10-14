@@ -43,4 +43,5 @@ from .gallery_db import (
     getGalleryByProjectId,
     getGalleryBytoken,
     setGalleryEnabled,
+    ensureGalleryCreatorIsOwner,
 )

@@ -44,6 +44,34 @@ def initializeDatabase():
                 ON DELETE CASCADE
         )"""
     )
+
+    # ---------------------------------------------------------
+    # GALLERY MENBERS
+    # ---------------------------------------------------------
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS client_gallery_members (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            gallery_id INTEGER NOT NULL,
+            email TEXT NOT NULL COLLATE NOCASE,
+            user_id INTEGER,
+            role TEXT NOT NULL DEFAULT 'viewer'
+                CHECK (role IN ('owner', 'viewer')),
+            invited_by_user_id INTEGER NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            UNIQUE (gallery_id, email),
+
+            FOREIGN KEY (user_id)
+                REFERENCES users(id)
+                ON DELETE SET NULL,
+
+            FOREIGN KEY (invited_by_user_id)
+                REFERENCES users(id)
+                ON DELETE RESTRICT
+        )"""
+    )
+
     # ---------------------------------------------------------
     # EVENTS
     # ---------------------------------------------------------
