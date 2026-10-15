@@ -145,15 +145,15 @@ def setGalleryEnabled(
 
     return updated
 
+
 def ensureGalleryCreatorIsOwner(gallery_id: int) -> bool:
 
     connection = getConnection()
     cursor = connection.cursor()
 
     try:
-
         cursor.execute(
-            '''
+            """
                 SELECT 
                     client_galleries.created_by_user_id,
                     users.email
@@ -161,7 +161,7 @@ def ensureGalleryCreatorIsOwner(gallery_id: int) -> bool:
                 JOIN users
                     ON users.id = client_galleries.created_by_user_id
                 WHERE client_galleries.id = ?
-            ''',
+            """,
             (gallery_id,),
         )
 
@@ -175,7 +175,7 @@ def ensureGalleryCreatorIsOwner(gallery_id: int) -> bool:
         now = datetime.now().isoformat()
 
         cursor.execute(
-            '''
+            """
                 INSERT INTO client_gallery_members (
                     gallery_id,
                     email,
@@ -193,17 +193,138 @@ def ensureGalleryCreatorIsOwner(gallery_id: int) -> bool:
                     user_id = excluded.user_id,
                     role = 'owner',
                     updated_at = excluded.updated_at
-            ''',
-            (gallery_id, email, user_id, user_id, now, now,),
-
+            """,
+            (
+                gallery_id,
+                email,
+                user_id,
+                user_id,
+                now,
+                now,
+            ),
         )
 
         connection.commit()
         return True
 
     finally:
-
         connection.close()
 
 
+def isGalleryOwner(gallery_id: int, user_id: int):
 
+    connection = getConnection()
+
+    try:
+        cursor = connection.cursor()
+
+        cursor.execute(
+            """
+                    SELECT 1
+                    FROM client_gallery_members
+                        WHERE gallery_id = ?
+                        AND user_id = ?
+                        AND role = 'owner'
+                    LIMIT 1
+                """,
+            (gallery_id, user_id),
+        )
+
+        return cursor.fetchone() is not None
+
+    finally:
+        connection.close()
+
+
+def addOrUpdatGalleryMember(gallery_id: int, email: str, role: str, invited_by_user_id: int):
+
+    email = email.strip().lower()
+    now = datetime.now().isoformat()
+
+    connection = getConnection()
+
+    try:
+        cursor = connection.cursor()
+
+        cursor.execute(
+            """
+                SELECT id FROM users
+                    WHERE email COLLATE NOCASE = ?
+                    LIMIT 1
+            """,
+            (email,),
+        )
+
+        existing_user = cursor.fetchone()
+
+        receipient_user_id = (
+            existing_user[0]
+            if existing_user is not None
+            else None
+        )
+
+        cursor.execute(
+            """
+                INSERT INTO client_gallery_members (
+                    gallery_id,
+                    email,
+                    user_id,
+                    role,
+                    invited_by_user_id,
+                    created_at,
+                    updated_at
+                )
+
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+
+                ON CONFLICT (gallery_id, email)
+                DO UPDATE SET
+                    user_id = COALESCE(
+                        excluded.user_id,
+                        client_gallery_members.user_id
+                    ),
+                    role = excluded.role,
+                    invited_by_user_id = excluded.invited_by_user_id,
+                    updated_at = excluded.updated_at
+
+            """,
+            (
+                gallery_id, email, receipient_user_id, role, invited_by_user_id, now, now,
+            ),
+        )
+
+        connection.commit()
+
+        cursor.execute(
+            """
+                SELECT 
+                    id,
+                    gallery_id,
+                    email,
+                    user_id,
+                    role,
+                    invited_by_user_id,
+                    created_at,
+                    updated_at
+                FROM client_gallery_members
+                WHERE gallery_id = ?
+                    AND email = ?
+            """,
+            (gallery_id, email,),
+        )
+
+        member = cursor.fetchone()
+
+        return {
+            "id": member[0],
+            "gallery_id": member[1],
+            "email": member[2],
+            "user_id": member[3],
+            "role": member[4],
+            "invited_by_user_id": member[5],
+            "created_at": member[6],
+            "updated_at": member[7],
+        }
+
+    finally: 
+        connection.close()
