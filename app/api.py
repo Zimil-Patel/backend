@@ -6,10 +6,10 @@ from fastapi.responses import FileResponse
 from app.database import getConnection
 from app.services.selfie_service import searchSelfie
 
-from app.auth.dependencies import getCurrentFirebaseUser, getCurrentLocalUser
+from app.auth.dependencies import getCurrentLocalUser
 from fastapi import Depends
 from app.database.photo_db import setPhotoFavouriteStatus
-from app.database.gallery_db import getGalleryByProjectId, createGallery, setGalleryEnabled, isGalleryOwner, addOrUpdatGalleryMember
+from app.database.gallery_db import getGalleryByProjectId, createGallery, setGalleryEnabled, isGalleryOwner, addOrUpdatGalleryMember, getGalleriesForUsers, ensureGalleryCreatorIsOwner
 from typing import Literal
 from pydantic import BaseModel
 
@@ -601,6 +601,8 @@ def createProjectGallery(
 
         gallery = getGalleryByProjectId(project_id)
 
+        ensureGalleryCreatorIsOwner(gallery[0])
+
     return galleryToResponse(gallery)
 
 #update is enabled in gallery
@@ -682,4 +684,13 @@ def shareProjectGallery(project_id: int, request: ShareGalleryRequest, user=Depe
             "account_found": member["user_id"] is not None
         }
     }
-    
+
+@router.get("/my-galleries")
+def getMyGalleries(user=Depends(getCurrentLocalUser)):
+
+    galleries = getGalleriesForUsers(user["id"])
+
+    return {
+        "success": True,
+        "galleries": galleries
+    }

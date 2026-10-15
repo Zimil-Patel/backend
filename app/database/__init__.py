@@ -46,4 +46,6 @@ from .gallery_db import (
     ensureGalleryCreatorIsOwner,
     isGalleryOwner,
     addOrUpdatGalleryMember,
+    linkPendingGalleryInvitations,
+    getGalleriesForUsers,
 )

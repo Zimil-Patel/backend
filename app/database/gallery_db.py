@@ -328,3 +328,84 @@ def addOrUpdatGalleryMember(gallery_id: int, email: str, role: str, invited_by_u
 
     finally: 
         connection.close()
+
+def linkPendingGalleryInvitations(
+        user_id: int,
+        email: str
+):
+
+    email = email.strip().lower()
+
+    if not email:
+        return 0
+
+    connection = getConnection()
+    try: 
+        cursor = connection.cursor()
+
+        now = datetime.now().isoformat()
+
+        cursor.execute(
+            """
+                UPDATE client_gallery_members
+                    SET user_id = ?,
+                    updated_at = ? 
+                WHERE 
+                    email COLLATE NOCASE = ? 
+                    AND user_id IS NULL
+            """,
+            (user_id,now,email,),
+        )
+
+        connection.commit()
+
+        return cursor.rowcount
+    finally:
+        connection.close()
+
+
+def getGalleriesForUsers(user_id: int):
+
+    connection = getConnection()
+
+    try:
+        cursor = connection.cursor()
+
+        cursor.execute(
+            """
+                SELECT
+                    galleries.id,
+                    galleries.project_id,
+                    projects.name,
+                    members.role,
+                    galleries.is_enabled,
+                    galleries.created_at,
+                    galleries.updated_at
+                FROM client_gallery_members AS members
+                JOIN client_galleries AS galleries
+                    ON galleries.id = members.id
+                JOIN projects
+                    ON projects.id = galleries.project_id
+                WHERE members.user_id = ?
+                ORDER BY galleries.created_at DESC, galleries.id DESC
+            """,
+            (user_id,),
+        )
+
+        rows = cursor.fetchall()
+
+        return [
+            {
+                "id": row[0],
+                "project_id": row[1],
+                "project_name": row[2],
+                "role": row[3],
+                "is_enabled": row[4],
+                "created_at": row[5],
+                "updated_at": row[6],
+            }
+            for row in rows
+        ]
+
+    finally:
+        connection.close()
