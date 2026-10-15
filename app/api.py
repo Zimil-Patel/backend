@@ -8,14 +8,19 @@ from app.services.selfie_service import searchSelfie
 
 from app.auth.dependencies import getCurrentFirebaseUser, getCurrentLocalUser
 from fastapi import Depends
-from app.database.user_db import syncUser
 from app.database.photo_db import setPhotoFavouriteStatus
-from app.database.gallery_db import getGalleryByProjectId, createGallery, setGalleryEnabled
+from app.database.gallery_db import getGalleryByProjectId, createGallery, setGalleryEnabled, isGalleryOwner, addOrUpdatGalleryMember
+from typing import Literal
 from pydantic import BaseModel
 
+class ShareGalleryRequest(BaseModel):
+    email: str
+    role: Literal["owner", "viewer"]
 
 class GalleryStatusUpdate(BaseModel):
     is_enabled: bool
+
+    
 
 router = APIRouter()
 
@@ -622,3 +627,59 @@ def updatePrjectGalleryStatus(
     gallery = getGalleryByProjectId(project_id)
 
     return galleryToResponse(gallery)
+
+@router.post("/projects/{project_id}/gallery/members")
+def shareProjectGallery(project_id: int, request: ShareGalleryRequest, user=Depends(getCurrentLocalUser)):
+
+    gallery = getGalleryByProjectId(project_id)
+
+    if gallery is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Client gallery not found for this project"
+        )
+
+    gallery_id = gallery[0]
+    current_user_id = user["id"]
+
+    if not isGalleryOwner(gallery_id=gallery_id, user_id=current_user_id):
+        raise HTTPException(
+            status_code=403,
+            detail="Only gallery owner can manager access"
+        )
+
+    email = request.email.strip().lower()
+
+    if(
+        email.count("@") != 1
+        or "." not in email.rsplit("@", 1)[1]
+    ):
+        raise HTTPException(
+            status_code=422,
+            details= "Please provide a valid enail address",
+        )
+
+    current_email = (user.get("email") or "").strip().lower()
+
+    if email == current_email and request.role != "owner":
+        raise HTTPException(
+            status_code=400,
+            detail="You can't downgrade your own Owner access here"
+        )
+
+    member = addOrUpdatGalleryMember(
+        gallery_id=gallery_id,
+        email=email,
+        role=request.role,
+        invited_by_user_id=current_user_id
+    )
+
+    return {
+        "success": True,
+        "member": {
+            "email": member["email"],
+            "role": member["role"],
+            "account_found": member["user_id"] is not None
+        }
+    }
+    
