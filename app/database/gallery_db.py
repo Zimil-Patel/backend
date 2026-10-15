@@ -364,35 +364,39 @@ def linkPendingGalleryInvitations(
         connection.close()
 
 
-def getGalleriesForUsers(user_id: int):
+def getGalleriesForUser(user_id: int):
 
     connection = getConnection()
 
     try:
         cursor = connection.cursor()
 
+        print(f"USER ID: {user_id}")
+
         cursor.execute(
             """
-                SELECT
-                    galleries.id,
-                    galleries.project_id,
-                    projects.name,
-                    members.role,
-                    galleries.is_enabled,
-                    galleries.created_at,
-                    galleries.updated_at
-                FROM client_gallery_members AS members
-                JOIN client_galleries AS galleries
-                    ON galleries.id = members.id
-                JOIN projects
-                    ON projects.id = galleries.project_id
-                WHERE members.user_id = ?
-                ORDER BY galleries.created_at DESC, galleries.id DESC
+            SELECT
+                g.id,
+                g.project_id,
+                p.name,
+                m.role,
+                g.is_enabled,
+                g.created_at,
+                g.updated_at
+            FROM client_gallery_members AS m
+            INNER JOIN client_galleries AS g
+                ON g.id = m.gallery_id
+            INNER JOIN projects AS p
+                ON p.id = g.project_id
+            WHERE m.user_id = ?
+            ORDER BY g.created_at DESC, g.id DESC
             """,
             (user_id,),
         )
 
         rows = cursor.fetchall()
+
+        print(rows)
 
         return [
             {

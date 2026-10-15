@@ -47,5 +47,5 @@ from .gallery_db import (
     isGalleryOwner,
     addOrUpdatGalleryMember,
     linkPendingGalleryInvitations,
-    getGalleriesForUsers,
+    getGalleriesForUser,
 )

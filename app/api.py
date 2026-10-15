@@ -9,7 +9,7 @@ from app.services.selfie_service import searchSelfie
 from app.auth.dependencies import getCurrentLocalUser
 from fastapi import Depends
 from app.database.photo_db import setPhotoFavouriteStatus
-from app.database.gallery_db import getGalleryByProjectId, createGallery, setGalleryEnabled, isGalleryOwner, addOrUpdatGalleryMember, getGalleriesForUsers, ensureGalleryCreatorIsOwner
+from app.database.gallery_db import getGalleryByProjectId, createGallery, setGalleryEnabled, isGalleryOwner, addOrUpdatGalleryMember, getGalleriesForUser, ensureGalleryCreatorIsOwner
 from typing import Literal
 from pydantic import BaseModel
 
@@ -688,7 +688,7 @@ def shareProjectGallery(project_id: int, request: ShareGalleryRequest, user=Depe
 @router.get("/my-galleries")
 def getMyGalleries(user=Depends(getCurrentLocalUser)):
 
-    galleries = getGalleriesForUsers(user["id"])
+    galleries = getGalleriesForUser(user["id"])
 
     return {
         "success": True,
