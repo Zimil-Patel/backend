@@ -9,20 +9,49 @@ from app.services.selfie_service import searchSelfie
 from app.auth.dependencies import getCurrentLocalUser
 from fastapi import Depends
 from app.database.photo_db import setPhotoFavouriteStatus
-from app.database.gallery_db import getGalleryByProjectId, createGallery, setGalleryEnabled, isGalleryOwner, addOrUpdatGalleryMember, getGalleriesForUser, ensureGalleryCreatorIsOwner, getGalleryBytoken, getGalleryMemberRole
+from app.database.gallery_db import (
+    getGalleryByProjectId,
+    createGallery,
+    setGalleryEnabled,
+    isGalleryOwner,
+    addOrUpdatGalleryMember,
+    getGalleriesForUser,
+    ensureGalleryCreatorIsOwner,
+    getGalleryBytoken,
+    getGalleryMemberRole,
+)
 from typing import Literal
 from pydantic import BaseModel
+
 
 class ShareGalleryRequest(BaseModel):
     email: str
     role: Literal["owner", "viewer"]
 
+
 class GalleryStatusUpdate(BaseModel):
     is_enabled: bool
 
-    
 
 router = APIRouter()
+
+
+def requireGalleryPhotoAccess(project_id: int, user_id: int):
+
+    gallery = getGalleryByProjectId(project_id)
+
+    if gallery is None:
+        raise HTTPException(status_code=404, detail="Gallery not found or unavailable")
+
+    role = getGalleryMemberRole(gallery_id=gallery[0], user_id=user_id)
+
+    if role is None:
+        raise HTTPException(status_code=404, detail="Gallery not found or unavailable")
+
+    if not bool(gallery[3]) and role != "owner":
+        raise HTTPException(status_code=404, detail="Gallery not found or unavailable")
+
+    return role
 
 
 @router.get("/")
@@ -78,20 +107,56 @@ def getEvents(project_id: int):
 
 
 @router.get("/events/{event_id}/photos")
-def getEventsPhotos(event_id: int):
+def getEventsPhotos(event_id: int, user=Depends(getCurrentLocalUser)):
     connection = getConnection()
-    cursor = connection.cursor()
 
-    cursor.execute(
-        """
-            SELECT id, filename, status, created_at, height, width, is_favourite FROM photos WHERE event_id = ? ORDER BY id ASC
-        """,
-        (event_id,),
-    )
+    try:
+        cursor = connection.cursor()
 
-    rows = cursor.fetchall()
+        cursor.execute(
+            """
+                SELECT project_id
+                FROM events
+                WHERE id = ?
+            """,
+            (event_id,),
+        )
 
-    connection.close()
+        event = cursor.fetchone()
+
+    finally:
+        connection.close()
+
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    requireGalleryPhotoAccess(user_id=user["id"], project_id=event[0])
+
+    connection = getConnection()
+
+    try:
+        cursor = connection.cursor()
+
+        cursor.execute(
+            """
+                SELECT id, 
+                filename, 
+                status, 
+                created_at, 
+                height, 
+                width, 
+                is_favourite 
+                FROM photos 
+                WHERE event_id = ? 
+                ORDER BY id ASC
+            """,
+            (event_id,),
+        )
+
+        rows = cursor.fetchall()
+
+    finally:
+        connection.close()
 
     photos = []
 
@@ -104,7 +169,7 @@ def getEventsPhotos(event_id: int):
                 "created_at": row[3],
                 "height": row[4],
                 "width": row[5],
-                "is_favourite": row[6]
+                "is_favourite": row[6],
             }
         )
 
@@ -112,28 +177,41 @@ def getEventsPhotos(event_id: int):
 
 
 @router.get("/photos/{photo_id}/image")
-def getPhotoImage(photo_id: int):
+def getPhotoImage(photo_id: int, user = Depends(getCurrentLocalUser)):
 
     connection = getConnection()
 
-    cursor = connection.cursor()
+    try:
+        cursor = connection.cursor()
 
-    cursor.execute(
-        """
-            SELECT file_path FROM photos WHERE id = ?
-        """,
-        (photo_id,),
-    )
+        cursor.execute(
+            """
+                SELECT 
+                    photos.file_path,
+                    events.project_id
+                FROM photos 
+                JOIN events
+                    ON events.id = photos.event_id
+                WHERE photos.id = ?
+            """,
+            (photo_id,),
+        )
 
-    row = cursor.fetchone()
+        row = cursor.fetchone()
 
-    connection.close()
+    finally:
+        connection.close()
 
     if row is None:
         raise HTTPException(
             status_code=404,
             detail="Photo not found",
         )
+
+    requireGalleryPhotoAccess(
+        project_id=row[1],
+        user_id=user["id"]
+    )
 
     file_path = Path(row[0])
 
@@ -196,7 +274,10 @@ def getPhotosForFace(face_id: int, project_id: int):
 
         ORDER BY photos.id ASC
         """,
-        (cluster_id,project_id,),
+        (
+            cluster_id,
+            project_id,
+        ),
     )
 
     rows = cursor.fetchall()
@@ -206,7 +287,6 @@ def getPhotosForFace(face_id: int, project_id: int):
     photos = []
 
     for row in rows:
-
         photos.append(
             {
                 "id": row[0],
@@ -215,7 +295,7 @@ def getPhotosForFace(face_id: int, project_id: int):
                 "created_at": row[3],
                 "height": row[4],
                 "width": row[5],
-                "is_favourite": row[6]
+                "is_favourite": row[6],
             }
         )
 
@@ -461,23 +541,28 @@ async def searchProjectBySelfie(project_id: int, selfie: UploadFile = File(...))
 
 
 @router.get("/photos/{photo_id}/thumbnail")
-def getPhotoThumbnail(photo_id: int):
+def getPhotoThumbnail(photo_id: int, user = Depends(getCurrentLocalUser)):
 
     connection = getConnection()
-    cursor = connection.cursor()
 
-    cursor.execute(
-        """
-        SELECT thumbnail_path
-        FROM photos
-        WHERE id = ?
-        """,
-        (photo_id,),
-    )
+    try:
+        cursor = connection.cursor()
 
-    row = cursor.fetchone()
+        cursor.execute(
+            """
+                SELECT photos.thumbnail_path, events.project_id
+                FROM photos
+                JOIN events
+                    ON events.id = photos.event_id
+                WHERE photos.id = ?
+            """,
+            (photo_id,),
+        )
 
-    connection.close()
+        row = cursor.fetchone()
+
+    finally:
+        connection.close()
 
     # Photo does not exist.
     if row is None:
@@ -485,6 +570,11 @@ def getPhotoThumbnail(photo_id: int):
             status_code=404,
             detail="Photo not found",
         )
+
+    requireGalleryPhotoAccess(
+        project_id=row[1],
+        user_id=user["id"],
+    )
 
     thumbnail_path = row[0]
 
@@ -505,6 +595,7 @@ def getPhotoThumbnail(photo_id: int):
         )
 
     return FileResponse(thumbnail_file)
+
 
 @router.put("/photos/{photo_id}/favourite")
 def setPhotoFavourite(
@@ -536,14 +627,12 @@ def setPhotoFavourite(
         "is_favourite": is_favourite,
     }
 
+
 ### Authtentication
 @router.get("/auth/me")
 def getCurrentUser(user=Depends(getCurrentLocalUser)):
 
-    return {
-        "success": True,
-        "user": user
-    }
+    return {"success": True, "user": user}
 
 
 def galleryToResponse(gallery):
@@ -562,8 +651,9 @@ def galleryToResponse(gallery):
         },
     }
 
-# create gallery 
-@router.post('/projects/{project_id}/gallery')
+
+# create gallery
+@router.post("/projects/{project_id}/gallery")
 def createProjectGallery(
     project_id: int,
     user=Depends(getCurrentLocalUser),
@@ -578,26 +668,22 @@ def createProjectGallery(
             projects
             WHERE id = ?
         """,
-        (
-            project_id,
-        ),
+        (project_id,),
     )
 
     project = cursor.fetchone()
     connection.close()
 
     if project is None:
-
-        raise HTTPException(
-            status_code=404,
-            detail="Project not found"
-        )
+        raise HTTPException(status_code=404, detail="Project not found")
 
     gallery = getGalleryByProjectId(project_id)
 
     if gallery is None:
-
-        createGallery(project_id=project_id, created_by_user_id=user['id'],)
+        createGallery(
+            project_id=project_id,
+            created_by_user_id=user["id"],
+        )
 
         gallery = getGalleryByProjectId(project_id)
 
@@ -605,12 +691,11 @@ def createProjectGallery(
 
     return galleryToResponse(gallery)
 
-#update is enabled in gallery
-@router.patch('/projects/{project_id}/gallery')
+
+# update is enabled in gallery
+@router.patch("/projects/{project_id}/gallery")
 def updatePrjectGalleryStatus(
-    project_id: int,
-    request: GalleryStatusUpdate,
-    user=Depends(getCurrentLocalUser)
+    project_id: int, request: GalleryStatusUpdate, user=Depends(getCurrentLocalUser)
 ):
     gallery = getGalleryByProjectId(project_id)
 
@@ -623,22 +708,23 @@ def updatePrjectGalleryStatus(
     updated = setGalleryEnabled(
         gallery_id=gallery[0],
         is_enabled=request.is_enabled,
-
     )
 
     gallery = getGalleryByProjectId(project_id)
 
     return galleryToResponse(gallery)
 
+
 @router.post("/projects/{project_id}/gallery/members")
-def shareProjectGallery(project_id: int, request: ShareGalleryRequest, user=Depends(getCurrentLocalUser)):
+def shareProjectGallery(
+    project_id: int, request: ShareGalleryRequest, user=Depends(getCurrentLocalUser)
+):
 
     gallery = getGalleryByProjectId(project_id)
 
     if gallery is None:
         raise HTTPException(
-            status_code=404,
-            detail="Client gallery not found for this project"
+            status_code=404, detail="Client gallery not found for this project"
         )
 
     gallery_id = gallery[0]
@@ -646,34 +732,29 @@ def shareProjectGallery(project_id: int, request: ShareGalleryRequest, user=Depe
 
     if not isGalleryOwner(gallery_id=gallery_id, user_id=current_user_id):
         raise HTTPException(
-            status_code=403,
-            detail="Only gallery owner can manager access"
+            status_code=403, detail="Only gallery owner can manager access"
         )
 
     email = request.email.strip().lower()
 
-    if(
-        email.count("@") != 1
-        or "." not in email.rsplit("@", 1)[1]
-    ):
+    if email.count("@") != 1 or "." not in email.rsplit("@", 1)[1]:
         raise HTTPException(
             status_code=422,
-            details= "Please provide a valid enail address",
+            details="Please provide a valid enail address",
         )
 
     current_email = (user.get("email") or "").strip().lower()
 
     if email == current_email and request.role != "owner":
         raise HTTPException(
-            status_code=400,
-            detail="You can't downgrade your own Owner access here"
+            status_code=400, detail="You can't downgrade your own Owner access here"
         )
 
     member = addOrUpdatGalleryMember(
         gallery_id=gallery_id,
         email=email,
         role=request.role,
-        invited_by_user_id=current_user_id
+        invited_by_user_id=current_user_id,
     )
 
     return {
@@ -681,45 +762,38 @@ def shareProjectGallery(project_id: int, request: ShareGalleryRequest, user=Depe
         "member": {
             "email": member["email"],
             "role": member["role"],
-            "account_found": member["user_id"] is not None
-        }
+            "account_found": member["user_id"] is not None,
+        },
     }
+
 
 @router.get("/my-galleries")
 def getMyGalleries(user=Depends(getCurrentLocalUser)):
 
     galleries = getGalleriesForUser(user["id"])
 
-    return {
-        "success": True,
-        "galleries": galleries
-    }
+    return {"success": True, "galleries": galleries}
+
 
 @router.get("/gallery/{share_token}")
-def getClientGallery(
-    share_token: str, user = Depends(getCurrentLocalUser)
-):
+def getClientGallery(share_token: str, user=Depends(getCurrentLocalUser)):
 
     gallery = getGalleryBytoken(share_token)
 
     if gallery is None or not bool(gallery[3]):
-        raise HTTPException(
-            status_code=404,
-            detail="Gallery not found or unavailable"
-        )
+        raise HTTPException(status_code=404, detail="Gallery not found or unavailable")
 
-    role = getGalleryMemberRole(gallery_id=gallery[0], user_id=user["id"],)
+    role = getGalleryMemberRole(
+        gallery_id=gallery[0],
+        user_id=user["id"],
+    )
 
     if role is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Gallery not found or unavailable"
-        )
+        raise HTTPException(status_code=404, detail="Gallery not found or unavailable")
 
     connection = getConnection()
 
     try:
-
         cursor = connection.cursor()
 
         cursor.execute(
@@ -735,12 +809,11 @@ def getClientGallery(
 
         if project is None:
             raise HTTPException(
-                status_code=404,
-                detail="Gallery not found or unavailable"
+                status_code=404, detail="Gallery not found or unavailable"
             )
 
         cursor.execute(
-             """
+            """
             SELECT id, name, created_at
             FROM events
             WHERE project_id = ?
@@ -752,7 +825,6 @@ def getClientGallery(
         event_rows = cursor.fetchall()
 
     finally:
-
         connection.close()
 
     return {
@@ -775,5 +847,5 @@ def getClientGallery(
                 "created_at": event[2],
             }
             for event in event_rows
-        ] 
+        ],
     }
