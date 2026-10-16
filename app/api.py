@@ -9,7 +9,7 @@ from app.services.selfie_service import searchSelfie
 from app.auth.dependencies import getCurrentLocalUser
 from fastapi import Depends
 from app.database.photo_db import setPhotoFavouriteStatus
-from app.database.gallery_db import getGalleryByProjectId, createGallery, setGalleryEnabled, isGalleryOwner, addOrUpdatGalleryMember, getGalleriesForUser, ensureGalleryCreatorIsOwner
+from app.database.gallery_db import getGalleryByProjectId, createGallery, setGalleryEnabled, isGalleryOwner, addOrUpdatGalleryMember, getGalleriesForUser, ensureGalleryCreatorIsOwner, getGalleryBytoken, getGalleryMemberRole
 from typing import Literal
 from pydantic import BaseModel
 
@@ -693,4 +693,87 @@ def getMyGalleries(user=Depends(getCurrentLocalUser)):
     return {
         "success": True,
         "galleries": galleries
+    }
+
+@router.get("/gallery/{share_token}")
+def getClientGallery(
+    share_token: str, user = Depends(getCurrentLocalUser)
+):
+
+    gallery = getGalleryBytoken(share_token)
+
+    if gallery is None or not bool(gallery[3]):
+        raise HTTPException(
+            status_code=404,
+            detail="Gallery not found or unavailable"
+        )
+
+    role = getGalleryMemberRole(gallery_id=gallery[0], user_id=user["id"],)
+
+    if role is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Gallery not found or unavailable"
+        )
+
+    connection = getConnection()
+
+    try:
+
+        cursor = connection.cursor()
+
+        cursor.execute(
+            """
+                SELECT id, name, created_at
+                FROM projects
+                WHERE id = ?
+            """,
+            (gallery[1],),
+        )
+
+        project = cursor.fetchone()
+
+        if project is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Gallery not found or unavailable"
+            )
+
+        cursor.execute(
+             """
+            SELECT id, name, created_at
+            FROM events
+            WHERE project_id = ?
+            ORDER BY id ASC
+            """,
+            (project[0],),
+        )
+
+        event_rows = cursor.fetchall()
+
+    finally:
+
+        connection.close()
+
+    return {
+        "success": True,
+        "gallery": {
+            "id": gallery[0],
+            "is_enabled": bool(gallery[3]),
+            "created_at": gallery[5],
+        },
+        "project": {
+            "id": project[0],
+            "name": project[1],
+            "created_at": project[2],
+        },
+        "role": role,
+        "events": [
+            {
+                "id": event[0],
+                "name": event[1],
+                "created_at": event[2],
+            }
+            for event in event_rows
+        ] 
     }

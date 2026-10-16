@@ -413,3 +413,32 @@ def getGalleriesForUser(user_id: int):
 
     finally:
         connection.close()
+
+def getGalleryMemberRole(
+    gallery_id: int,
+    user_id: int
+) -> str | None:
+
+    connection = getConnection()
+
+    try:
+
+        cursor = connection.cursor()
+
+        cursor.execute(
+            """
+                SELECT role
+                    FROM client_gallery_members
+                    WHERE gallery_id = ?
+                        AND user_id = ?
+                    LIMIT 1
+            """,
+            (gallery_id, user_id,),
+        )
+
+        row = cursor.fetchone()
+
+        return row[0] if row else None
+
+    finally:
+        connection.close()

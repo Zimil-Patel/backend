@@ -48,4 +48,5 @@ from .gallery_db import (
     addOrUpdatGalleryMember,
     linkPendingGalleryInvitations,
     getGalleriesForUser,
+    getGalleryMemberRole
 )
