@@ -117,38 +117,6 @@ def initializeDatabase():
     )
 
     # ---------------------------------------------------------
-    # EXISTING PHOTOS TABLE MIGRATION
-    #
-    # SQLite does not modify an existing table when
-    # CREATE TABLE IF NOT EXISTS is used.
-    #
-    # Therefore we check whether thumbnail_path exists
-    # and add it if necessary.
-    # ---------------------------------------------------------
-
-    cursor.execute(
-        """
-        PRAGMA table_info(photos)
-        """
-    )
-
-    photo_columns = [
-        row[1]
-        for row in cursor.fetchall()
-    ]
-
-    if "thumbnail_path" not in photo_columns:
-
-        cursor.execute(
-            """
-            ALTER TABLE photos
-            ADD COLUMN thumbnail_path TEXT
-            """
-        )
-
-        print("Added thumbnail_path column to photos table")
-
-    # ---------------------------------------------------------
     # FACES
     # ---------------------------------------------------------
 
@@ -171,31 +139,6 @@ def initializeDatabase():
         """
     )
 
-    # ---------------------------------------------------------
-    # EXISTING FACES TABLE MIGRATION
-    # ---------------------------------------------------------
-
-    cursor.execute(
-        """
-        PRAGMA table_info(faces)
-        """
-    )
-
-    face_columns = [
-        row[1]
-        for row in cursor.fetchall()
-    ]
-
-    if "thumbnail_path" not in face_columns:
-
-        cursor.execute(
-            """
-            ALTER TABLE faces
-            ADD COLUMN thumbnail_path TEXT
-            """
-        )
-
-        print("Added thumbnail_path column to faces table")
 
     # ---------------------------------------------------------
     # FACE CLUSTERS
@@ -258,6 +201,20 @@ def initializeDatabase():
 
     # Save all table changes.
     connection.commit()
+
+    cursor.execute("PRAGMA table_info(users)")
+
+    existing_cols = {
+        row[1] for row in cursor.fetchall()
+    }
+
+    if "photo_url" not in existing_cols:
+        cursor.execute(
+            """
+            ALTER TABLE users
+            ADD COLUMN photo_url TEXT
+            """
+        )
 
     # Close the database connection.
     connection.close()
