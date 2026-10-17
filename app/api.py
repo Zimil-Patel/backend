@@ -601,20 +601,78 @@ def getPhotoThumbnail(photo_id: int, user = Depends(getCurrentLocalUser)):
 def setPhotoFavourite(
     photo_id: int,
     is_favourite: bool,
+    user=Depends(getCurrentLocalUser),
 ):
     """
-    Favourite or unfavourite a photo.
-
-    True  -> Favourite the photo
-    False -> Unfavourite the photo
+    Allow only gallery Owners to favourite or unfavourite photos.
     """
 
+    # Find the project associated with this photo.
+    connection = getConnection()
+
+    try:
+        cursor = connection.cursor()
+
+        cursor.execute(
+            """
+            SELECT events.project_id
+            FROM photos
+            JOIN events
+                ON events.id = photos.event_id
+            WHERE photos.id = ?
+            """,
+            (photo_id,),
+        )
+
+        photo = cursor.fetchone()
+
+    finally:
+        connection.close()
+
+    # Return 404 if the photo does not exist.
+    if photo is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Photo not found",
+        )
+
+    project_id = photo[0]
+
+    # Find the gallery associated with this project.
+    gallery = getGalleryByProjectId(project_id)
+
+    if gallery is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Gallery not found",
+        )
+
+    # Check the signed-in user's role in this gallery.
+    role = getGalleryMemberRole(
+        gallery_id=gallery[0],
+        user_id=user["id"],
+    )
+
+    # Don't allow users who aren't members to modify favourites.
+    if role is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Gallery not found",
+        )
+
+    # Only Owners can change the shared favourite status.
+    if role != "owner":
+        raise HTTPException(
+            status_code=403,
+            detail="Only gallery Owners can change favourites",
+        )
+
+    # Update the database using your existing helper.
     updated = setPhotoFavouriteStatus(
         photo_id=photo_id,
         is_favourite=is_favourite,
     )
 
-    # If no photo exists with this ID, return 404.
     if not updated:
         raise HTTPException(
             status_code=404,
