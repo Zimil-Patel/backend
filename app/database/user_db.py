@@ -12,44 +12,49 @@ def getUserByFirebaseUid(firebase_uid: str):
     """
 
     connection = getConnection()
-    cursor = connection.cursor()
+    try:
+        cursor = connection.cursor()
 
-    cursor.execute(
-        """
-        SELECT
-            id,
-            firebase_uid,
-            first_name,
-            last_name,
-            email,
-            email_verified,
-            mobile_number,
-            created_at,
-            updated_at
-        FROM users
-        WHERE firebase_uid = ?
-        """,
-        (firebase_uid,),
-    )
+        cursor.execute(
+            """
+            SELECT
+                id,
+                firebase_uid,
+                first_name,
+                last_name,
+                email,
+                email_verified,
+                mobile_number,
+                photo_url,
+                created_at,
+                updated_at
+            FROM users
+            WHERE firebase_uid = ?
+            """,
+            (firebase_uid,),
+        )
 
-    row = cursor.fetchone()
+        row = cursor.fetchone()
 
-    connection.close()
+        if row is None:
+            return None
 
-    if row is None:
-        return None
+        return {
+                "id": row[0],
+                "firebase_uid": row[1],
+                "first_name": row[2],
+                "last_name": row[3],
+                "email": row[4],
+                "email_verified": bool(row[5]),
+                "mobile_number": row[6],
+                "photo_url": row[7],
+                "created_at": row[8],
+                "updated_at": row[9],
+            }
 
-    return {
-        "id": row[0],
-        "firebase_uid": row[1],
-        "first_name": row[2],
-        "last_name": row[3],
-        "email": row[4],
-        "email_verified": bool(row[5]),
-        "mobile_number": row[6],
-        "created_at": row[7],
-        "updated_at": row[8],
-    }
+    finally:
+        connection.close()
+    
 
 
 def createUser(
@@ -58,49 +63,52 @@ def createUser(
     last_name: str | None,
     email: str,
     email_verified: bool,
+    photo_url: str | None
 ):
     """
     Create a new local user after Firebase authentication.
     """
 
     connection = getConnection()
-    cursor = connection.cursor()
+    try:
+        cursor = connection.cursor()
 
-    now = datetime.now().isoformat()
+        now = datetime.now().isoformat()
 
-    cursor.execute(
-        """
-        INSERT INTO users (
-            firebase_uid,
-            first_name,
-            last_name,
-            email,
-            email_verified,
-            mobile_number,
-            created_at,
-            updated_at
+        cursor.execute(
+            """
+            INSERT INTO users (
+                firebase_uid,
+                first_name,
+                last_name,
+                email,
+                email_verified,
+                mobile_number,
+                photo_url,
+                created_at,
+                updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                firebase_uid,
+                first_name,
+                last_name,
+                email,
+                1 if email_verified else 0,
+                None,
+                photo_url,
+                now,
+                now,
+            ),
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        (
-            firebase_uid,
-            first_name,
-            last_name,
-            email,
-            1 if email_verified else 0,
-            None,
-            now,
-            now,
-        ),
-    )
 
-    connection.commit()
+        connection.commit()
+        return cursor.lastrowid
 
-    user_id = cursor.lastrowid
+    finally:
+        connection.close()
 
-    connection.close()
-
-    return user_id
 
 
 def updateUser(
@@ -109,6 +117,7 @@ def updateUser(
     last_name: str | None,
     email: str,
     email_verified: bool,
+    photo_url: str | None
 ):
     """
     Update the local user profile.
@@ -118,34 +127,40 @@ def updateUser(
     """
 
     connection = getConnection()
-    cursor = connection.cursor()
 
-    now = datetime.now().isoformat()
+    try:
+        cursor = connection.cursor()
 
-    cursor.execute(
-        """
-        UPDATE users
-        SET
-            first_name = ?,
-            last_name = ?,
-            email = ?,
-            email_verified = ?,
-            updated_at = ?
-        WHERE firebase_uid = ?
-        """,
-        (
-            first_name,
-            last_name,
-            email,
-            1 if email_verified else 0,
-            now,
-            firebase_uid,
-        ),
-    )
+        now = datetime.now().isoformat()
 
-    connection.commit()
+        cursor.execute(
+            """
+            UPDATE users
+            SET
+                first_name = ?,
+                last_name = ?,
+                email = ?,
+                email_verified = ?,
+                photo_url = ?,
+                updated_at = ?
+            WHERE firebase_uid = ?
+            """,
+            (
+                first_name,
+                last_name,
+                email,
+                1 if email_verified else 0,
+                photo_url,
+                now,
+                firebase_uid,
+            ),
+        )
 
-    connection.close()
+        connection.commit()
+
+    finally:
+
+        connection.close()
 
 
 def syncUser(
@@ -154,6 +169,7 @@ def syncUser(
     last_name: str | None,
     email: str,
     email_verified: bool,
+    photo_url: str | None
 ):
     """
     Create the user if they don't exist.
@@ -172,6 +188,7 @@ def syncUser(
             last_name=last_name,
             email=email,
             email_verified=email_verified,
+            photo_url=photo_url
         )
     else:
         updateUser(
@@ -180,6 +197,7 @@ def syncUser(
             last_name=last_name,
             email=email,
             email_verified=email_verified,
+            photo_url=photo_url
         )
 
     return getUserByFirebaseUid(firebase_uid)

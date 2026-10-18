@@ -51,6 +51,7 @@ def getCurrentLocalUser(
         last_name=name_parts[1] if len(name_parts) > 1 else "",
         email=email,
         email_verified=email_verified,
+        photo_url=firebase_user.get("picture"),
     )
 
     if email and email.strip():
