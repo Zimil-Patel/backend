@@ -1,7 +1,7 @@
 import ast
 from pathlib import Path
 
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 from pillow_heif import register_heif_opener
 register_heif_opener()
@@ -258,3 +258,87 @@ def getPhotoDimensions(file_path: str):
             oriented_image.width,
             oriented_image.height,
         )
+
+def saveProfilePhoto(
+    source_file,
+    output_path: str,
+    size: tuple[int, int] = (512, 512),
+) -> str:
+    """
+    Process an uploaded profile photo and save it as a square JPEG.
+
+    The source may be JPEG, PNG, WebP, or a supported HEIC/HEIF image.
+    The original upload is not modified.
+
+    The image is cropped to a square and resized so profile pictures
+    have a consistent size without storing the original full-resolution
+    file.
+    """
+
+    output_file = Path(output_path)
+
+    try:
+        # Open the uploaded file using Pillow and the registered
+        # HEIF opener where appropriate.
+        with Image.open(source_file) as source_image:
+            # Decode the image while the upload file is still available.
+            source_image.load()
+
+            # Correct camera rotation before cropping.
+            image = ImageOps.exif_transpose(source_image)
+
+            # Convert transparent images onto a white background
+            # because the final profile image is a JPEG.
+            if (
+                "A" in image.getbands()
+                or "transparency" in image.info
+            ):
+                rgba_image = image.convert("RGBA")
+
+                rgb_background = Image.new(
+                    "RGB",
+                    rgba_image.size,
+                    (255, 255, 255),
+                )
+
+                rgb_background.paste(
+                    rgba_image,
+                    mask=rgba_image.getchannel("A"),
+                )
+
+                image = rgb_background
+            else:
+                image = image.convert("RGB")
+
+            # Make a square crop. Flutter will let the user choose
+            # the crop area, while this also handles non-square uploads.
+            cropped_image = ImageOps.fit(
+                image,
+                size,
+                method=Image.Resampling.LANCZOS,
+                centering=(0.5, 0.5),
+            )
+
+            # Create the destination directory if it does not exist.
+            output_file.parent.mkdir(
+                parents=True,
+                exist_ok=True,
+            )
+
+            # Save a compact JPEG rather than the original high-resolution
+            # image. No arbitrary 5 MB upload limit is imposed here.
+            cropped_image.save(
+                output_file,
+                format="JPEG",
+                quality=90,
+                optimize=True,
+            )
+
+    except (UnidentifiedImageError, OSError, ValueError) as error:
+        # Give the API a consistent error to report for invalid images.
+        raise ValueError(
+            "Unsupported, invalid, or unreadable image file."
+        ) from error
+
+    # Return the absolute path so the API can use it if needed.
+    return str(output_file.resolve())

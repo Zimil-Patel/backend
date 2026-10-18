@@ -141,7 +141,7 @@ def updateUser(
                 last_name = ?,
                 email = ?,
                 email_verified = ?,
-                photo_url = ?,
+                photo_url = COALESCE(photo_url, ?),
                 updated_at = ?
             WHERE firebase_uid = ?
             """,
@@ -201,3 +201,36 @@ def syncUser(
         )
 
     return getUserByFirebaseUid(firebase_uid)
+
+
+def updateUserPhotoUrl(
+    firebase_uid: str,
+    photo_url: str,
+) -> bool:
+    """Update a user's current profile-photo URL."""
+
+    connection = getConnection()
+
+    try:
+        cursor = connection.cursor()
+
+        cursor.execute(
+            """
+            UPDATE users
+            SET photo_url = ?, updated_at = ?
+            WHERE firebase_uid = ?
+            """,
+            (
+                photo_url,
+                datetime.now().isoformat(),
+                firebase_uid,
+            ),
+        )
+
+        connection.commit()
+
+        # True means the Firebase UID matched a local user record.
+        return cursor.rowcount > 0
+
+    finally:
+        connection.close()

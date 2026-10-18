@@ -442,3 +442,76 @@ def getGalleryMemberRole(
 
     finally:
         connection.close()
+
+def getGalleryMembers(gallery_id: int):
+
+    connection = getConnection()
+
+    try:
+        cursor = connection.cursor()
+
+        cursor.execute(
+            """
+                SELECT
+                    m.id,
+                    m.gallery_id,
+                    m.email,
+                    m.user_id,
+                    m.role,
+                    m.invited_by_user_id,
+                    m.created_at,
+                    m.updated_at,
+                    users.id,
+                    users.first_name,
+                    users.last_name,
+                    users.photo_url
+                FROM client_gallery_members AS m
+                LEFT JOIN users
+                    ON users.id = m.user_id
+                WHERE m.gallery_id = ?
+                ORDER BY
+                    CASE m.role
+                        WHEN 'owner' THEN 0
+                        ELSE 1
+                    END,
+                    LOWER(m.email) ASC
+            """,
+            (gallery_id,),
+        )
+
+        rows = cursor.fetchall()
+
+        members = []
+
+        for row in rows:
+            is_registered = row[8] is not None
+
+            full_name = (
+                f"{row[9] or ''} {row[10] or ''}".strip()
+                if is_registered
+                else ""
+            )
+
+            members.append(
+                {
+                    "id": row[0],
+                    "gallery_id": row[1],
+                    "email": row[2],
+                    "user_id": row[3],
+                    "role": row[4],
+                    "invited_by_user_id": row[5],
+                    "created_at": row[6],
+                    "updated_at": row[7],
+                    "is_registered": is_registered,
+                    "first_name": row[9],
+                    "last_name": row[10],
+                    "full_name": full_name or None,
+                    "photo_url": row[11],
+                }
+            )
+
+        return members
+
+
+    finally:
+        connection.close()

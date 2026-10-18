@@ -1,12 +1,15 @@
 from pathlib import Path
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from uuid import uuid4
+from fastapi import APIRouter, File, HTTPException, UploadFile, Request
 from fastapi.responses import FileResponse
 
 from app.database import getConnection
 from app.services.selfie_service import searchSelfie
 
 from app.auth.dependencies import getCurrentLocalUser
+from app.database.user_db import updateUserPhotoUrl
+from app.services.image_service import saveProfilePhoto
 from fastapi import Depends
 from app.database.photo_db import setPhotoFavouriteStatus
 from app.database.gallery_db import (
@@ -19,6 +22,7 @@ from app.database.gallery_db import (
     ensureGalleryCreatorIsOwner,
     getGalleryBytoken,
     getGalleryMemberRole,
+    getGalleryMembers
 )
 from typing import Literal
 from pydantic import BaseModel
@@ -32,6 +36,14 @@ class ShareGalleryRequest(BaseModel):
 class GalleryStatusUpdate(BaseModel):
     is_enabled: bool
 
+class UpdateGalleryMemberRoleRequest(BaseModel):
+    role: Literal["owner", "viewer"]
+
+PROFILE_PHOTOS_DIR = (
+    Path(__file__).resolve().parent.parent
+    / "data"
+    / "profiles"
+)
 
 router = APIRouter()
 
@@ -798,7 +810,7 @@ def shareProjectGallery(
     if email.count("@") != 1 or "." not in email.rsplit("@", 1)[1]:
         raise HTTPException(
             status_code=422,
-            details="Please provide a valid enail address",
+            details="Please provide a valid email address",
         )
 
     current_email = (user.get("email") or "").strip().lower()
@@ -906,4 +918,167 @@ def getClientGallery(share_token: str, user=Depends(getCurrentLocalUser)):
             }
             for event in event_rows
         ],
+    }
+
+
+@router.get(
+    "/profiles/{user_id}/image",
+    name="getProfilePhotoImage",
+)
+def getProfilePhotoImage(user_id: int):
+    """
+    Serve a user's profile photo without requiring authentication.
+
+    Profile photos are publicly readable.
+    Uploading or changing a photo still requires authentication.
+    """
+
+    # Build the path using the local SQLite user ID.
+    # The filename is fixed, so callers cannot specify arbitrary paths.
+    image_path = (
+        PROFILE_PHOTOS_DIR
+        / str(user_id)
+        / "profile.jpg"
+    )
+
+    # Return 404 when no profile photo exists.
+    if not image_path.is_file():
+        raise HTTPException(
+            status_code=404,
+            detail="Profile photo not found.",
+        )
+
+    # Serve the JPEG without requiring a Firebase ID token.
+    return FileResponse(
+        image_path,
+        media_type="image/jpeg",
+        headers={
+            "Cache-Control": "public, max-age=300",
+        },
+    )
+
+
+@router.post("/auth/me/profile-photo")
+def uploadMyProfilePhoto(
+    request: Request,
+    file: UploadFile = File(...),
+    user=Depends(getCurrentLocalUser),
+):
+    """
+    Upload the current user's profile photo.
+
+    The destination is derived from the authenticated local user ID,
+    so the client cannot choose another user's profile directory.
+    """
+
+    # Store each user's current profile image separately.
+    user_directory = PROFILE_PHOTOS_DIR / str(user["id"])
+    output_path = user_directory / "profile.jpg"
+
+    try:
+        # Start reading from the beginning of the uploaded file.
+        file.file.seek(0)
+
+        # Decode, correct orientation, crop, resize, and save the image.
+        saveProfilePhoto(
+            source_file=file.file,
+            output_path=str(output_path),
+            size=(512, 512),
+        )
+
+    except ValueError as error:
+        # The uploaded bytes could not be decoded as a supported image.
+        raise HTTPException(
+            status_code=400,
+            detail=str(error),
+        ) from error
+
+    except OSError as error:
+        # Report storage-related errors separately from invalid images.
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to save the profile photo.",
+        ) from error
+
+    finally:
+        # Release the uploaded temporary file.
+        file.file.close()
+
+    # Generate the URL for the authenticated image-serving endpoint.
+    # The changing query value also helps the Flutter image cache
+    # distinguish a newly uploaded photo from a previous version.
+    base_url = str(request.base_url).rstrip("/")
+
+    photo_url = (
+        f"{base_url}/profiles/{user['id']}/image"
+        f"?v={uuid4().hex}"
+    )
+
+    # Save the current photo URL in the local SQLite user record.
+    updated = updateUserPhotoUrl(
+        firebase_uid=user["firebase_uid"],
+        photo_url=photo_url,
+    )
+
+    if not updated:
+        raise HTTPException(
+            status_code=500,
+            detail="The photo was saved, but the user record was not updated.",
+        )
+
+    return {
+        "success": True,
+        "photo_url": photo_url,
+    }
+
+@router.get("/projects/{project_id}/gallery/members")
+def getProjectGalleryMembers(
+    project_id: int,
+    user=Depends(getCurrentLocalUser),
+):
+    """
+    Return members and pending invitations for a gallery.
+
+    Only gallery Owners can view the member list.
+    """
+
+    # Find the gallery associated with this project.
+    gallery = getGalleryByProjectId(project_id)
+
+    if gallery is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Gallery not found",
+        )
+
+    gallery_id = gallery[0]
+
+    # Retrieve this user's role in the gallery.
+    role = getGalleryMemberRole(
+        gallery_id=gallery_id,
+        user_id=user["id"],
+    )
+
+    # Do not reveal gallery membership to non-members.
+    if role is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Gallery not found",
+        )
+
+    # Viewers can see photos but cannot manage gallery members.
+    if role != "owner":
+        raise HTTPException(
+            status_code=403,
+            detail="Only gallery Owners can view the member list",
+        )
+
+    # Retrieve registered members and unclaimed invitations.
+    members = getGalleryMembers(gallery_id)
+
+    return {
+        "success": True,
+        "gallery_id": gallery_id,
+        "project_id": project_id,
+        "members": members,
     }

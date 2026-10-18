@@ -36,6 +36,7 @@ from .user_db import (
     createUser,
     updateUser,
     syncUser,
+    updateUserPhotoUrl
 )
 
 from .gallery_db import (
@@ -48,5 +49,6 @@ from .gallery_db import (
     addOrUpdatGalleryMember,
     linkPendingGalleryInvitations,
     getGalleriesForUser,
-    getGalleryMemberRole
+    getGalleryMemberRole,
+    getGalleryMembers,
 )
