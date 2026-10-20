@@ -22,7 +22,9 @@ from app.database.gallery_db import (
     ensureGalleryCreatorIsOwner,
     getGalleryBytoken,
     getGalleryMemberRole,
-    getGalleryMembers
+    getGalleryMembers,
+    updateGalleryMemberRole,
+    removeGalleryMember
 )
 from typing import Literal
 from pydantic import BaseModel
@@ -1081,4 +1083,134 @@ def getProjectGalleryMembers(
         "gallery_id": gallery_id,
         "project_id": project_id,
         "members": members,
+    }
+
+@router.patch("/projects/{project_id}/gallery/members/{member_id}")
+def changeGalleryMemberRole(
+    project_id: int,
+    member_id: int,
+    request: UpdateGalleryMemberRoleRequest,
+    user=Depends(getCurrentLocalUser),
+):
+    """
+    Update a gallery member's role.
+    Only Owners can perform this operation.
+    """
+
+    # Locate the gallery associated with the project.
+    gallery = getGalleryByProjectId(project_id)
+
+    if gallery is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Client gallery not found",
+        )
+
+    gallery_id = gallery[0]
+
+    # Only a current Owner may change membership roles.
+    if not isGalleryOwner(
+        gallery_id=gallery_id,
+        user_id=user["id"],
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Only gallery Owners can change member roles",
+        )
+
+    # Update the membership, including last-Owner safeguards.
+    result = updateGalleryMemberRole(
+        gallery_id=gallery_id,
+        member_id=member_id,
+        role=request.role,
+        current_user_id=user["id"],
+    )
+
+    if result["status"] == "not_found":
+        raise HTTPException(
+            status_code=404,
+            detail="Gallery member not found",
+        )
+
+    if result["status"] == "self_demotion":
+        raise HTTPException(
+            status_code=400,
+            detail="You cannot downgrade your own Owner access",
+        )
+
+    if result["status"] == "last_owner":
+        raise HTTPException(
+            status_code=409,
+            detail="The last Owner cannot be demoted",
+        )
+
+    return {
+        "success": True,
+        "member": result["member"],
+    }
+
+@router.delete(
+    "/projects/{project_id}/gallery/members/{member_id}"
+)
+def deleteProjectGalleryMember(
+    project_id: int,
+    member_id: int,
+    user=Depends(getCurrentLocalUser),
+):
+    """
+    Remove a gallery member or pending invitation.
+
+    Only Owners can remove membership.
+    """
+
+    # Find the gallery associated with the requested project.
+    gallery = getGalleryByProjectId(project_id)
+
+    if gallery is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Client gallery not found",
+        )
+
+    gallery_id = gallery[0]
+
+    # Verify that the authenticated user is a gallery Owner.
+    if not isGalleryOwner(
+        gallery_id=gallery_id,
+        user_id=user["id"],
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Only gallery Owners can remove members",
+        )
+
+    # Remove the specific membership, with Owner safeguards.
+    result = removeGalleryMember(
+        gallery_id=gallery_id,
+        member_id=member_id,
+        current_user_id=user["id"],
+    )
+
+    if result["status"] == "not_found":
+        raise HTTPException(
+            status_code=404,
+            detail="Gallery member not found",
+        )
+
+    if result["status"] == "self_removal":
+        raise HTTPException(
+            status_code=400,
+            detail="You cannot remove your own gallery membership",
+        )
+
+    if result["status"] == "last_owner":
+        raise HTTPException(
+            status_code=409,
+            detail="The last Owner cannot be removed",
+        )
+
+    return {
+        "success": True,
+        "message": "Gallery member removed successfully",
+        "removed_member": result["member"],
     }

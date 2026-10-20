@@ -51,4 +51,6 @@ from .gallery_db import (
     getGalleriesForUser,
     getGalleryMemberRole,
     getGalleryMembers,
+    updateGalleryMemberRole,
+    removeGalleryMember,
 )

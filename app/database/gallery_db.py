@@ -4,6 +4,188 @@ from datetime import datetime
 from app.database.connection import getConnection
 
 
+def removeGalleryMember(
+    gallery_id: int,
+    member_id: int,
+    current_user_id: int,
+):
+    """
+    Remove a member or pending invitation from a gallery.
+
+    Prevents Owners from removing themselves and prevents
+    removal of the last Owner.
+    """
+
+    connection = getConnection()
+
+    try:
+        cursor = connection.cursor()
+
+        # Start a write transaction before checking membership
+        # and Owner counts to avoid concurrent conflicting changes.
+        cursor.execute("BEGIN IMMEDIATE")
+
+        # Find the specific membership within the requested gallery.
+        cursor.execute(
+            """
+            SELECT
+                id,
+                gallery_id,
+                email,
+                user_id,
+                role
+            FROM client_gallery_members
+            WHERE id = ? AND gallery_id = ?
+            """,
+            (member_id, gallery_id),
+        )
+
+        member = cursor.fetchone()
+
+        if member is None:
+            connection.rollback()
+            return {"status": "not_found"}
+
+        # Don't allow the current Owner to remove themselves.
+        if member[3] == current_user_id:
+            connection.rollback()
+            return {"status": "self_removal"}
+
+        # Protect the last Owner from being removed.
+        if member[4] == "owner":
+            cursor.execute(
+                """
+                SELECT COUNT(*)
+                FROM client_gallery_members
+                WHERE gallery_id = ?
+                  AND role = 'owner'
+                """,
+                (gallery_id,),
+            )
+
+            owner_count = cursor.fetchone()[0]
+
+            if owner_count <= 1:
+                connection.rollback()
+                return {"status": "last_owner"}
+
+        # Delete only this gallery membership.
+        # The user's local account remains untouched.
+        cursor.execute(
+            """
+            DELETE FROM client_gallery_members
+            WHERE id = ? AND gallery_id = ?
+            """,
+            (member_id, gallery_id),
+        )
+
+        connection.commit()
+
+        return {
+            "status": "ok",
+            "member": {
+                "id": member[0],
+                "gallery_id": member[1],
+                "email": member[2],
+                "user_id": member[3],
+                "role": member[4],
+            },
+        }
+
+    finally:
+        connection.close()
+
+def updateGalleryMemberRole(
+    gallery_id: int,
+    member_id: int,
+    role: str,
+    current_user_id: int,
+):
+    """
+    Change a gallery membership's role.
+
+    Prevents self-demotion and prevents demoting the last Owner.
+    Uses a write transaction so concurrent changes cannot both
+    pass the last-Owner check.
+    """
+
+    connection = getConnection()
+
+    try:
+        cursor = connection.cursor()
+
+        # Lock the SQLite write transaction before checking Owner count.
+        cursor.execute("BEGIN IMMEDIATE")
+
+        # Find the membership by its membership ID and gallery ID.
+        cursor.execute(
+            """
+            SELECT id, gallery_id, email, user_id, role
+            FROM client_gallery_members
+            WHERE id = ? AND gallery_id = ?
+            """,
+            (member_id, gallery_id),
+        )
+
+        member = cursor.fetchone()
+
+        if member is None:
+            connection.rollback()
+            return {"status": "not_found"}
+
+        # Do not allow the acting Owner to demote themselves.
+        if member[3] == current_user_id and role != "owner":
+            connection.rollback()
+            return {"status": "self_demotion"}
+
+        # Do not allow the last Owner to lose Owner status.
+        if member[4] == "owner" and role != "owner":
+            cursor.execute(
+                """
+                SELECT COUNT(*)
+                FROM client_gallery_members
+                WHERE gallery_id = ? AND role = 'owner'
+                """,
+                (gallery_id,),
+            )
+
+            owner_count = cursor.fetchone()[0]
+
+            if owner_count <= 1:
+                connection.rollback()
+                return {"status": "last_owner"}
+
+        # Update only the requested membership's role.
+        cursor.execute(
+            """
+            UPDATE client_gallery_members
+            SET role = ?, updated_at = ?
+            WHERE id = ? AND gallery_id = ?
+            """,
+            (
+                role,
+                datetime.now().isoformat(),
+                member_id,
+                gallery_id,
+            ),
+        )
+
+        connection.commit()
+
+        return {
+            "status": "ok",
+            "member": {
+                "id": member[0],
+                "gallery_id": member[1],
+                "email": member[2],
+                "user_id": member[3],
+                "role": role,
+            },
+        }
+
+    finally:
+        connection.close()
+
 def generateGalleryToken() -> str:
     """
     Generate a unique token for a gallery.
