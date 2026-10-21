@@ -12,6 +12,7 @@ from app.database.user_db import updateUserPhotoUrl
 from app.services.image_service import saveProfilePhoto
 from fastapi import Depends
 from app.database.photo_db import setPhotoFavouriteStatus
+from datetime import timezone, datetime
 from app.database.gallery_db import (
     getGalleryByProjectId,
     createGallery,
@@ -24,8 +25,28 @@ from app.database.gallery_db import (
     getGalleryMemberRole,
     getGalleryMembers,
     updateGalleryMemberRole,
-    removeGalleryMember
+    removeGalleryMember,
 )
+
+from app.database.sharing_db import (
+    createGalleryShareLink,
+    getGalleryShareLink,
+    getGalleryShareLinks,
+    revokeGalleryShareLink,
+    createGalleryAccessRequest,
+    getGalleryAccessRequests,
+    resolveGalleryAccessRequest,
+    createGalleryInvitation,
+    getGalleryInvitations,
+    revokeGalleryInvitation,
+    registerDeviceToken,
+    removeDeviceToken,
+    createUserNotification,
+    getUserNotifications,
+    markUserNotificationRead,
+    linkPendingGalleryInvitationsForUser
+)
+
 from typing import Literal
 from pydantic import BaseModel
 
@@ -40,6 +61,19 @@ class GalleryStatusUpdate(BaseModel):
 
 class UpdateGalleryMemberRoleRequest(BaseModel):
     role: Literal["owner", "viewer"]
+
+
+class CreateGalleryShareLinkRequest(BaseModel):
+    expires_at_utc: str
+
+
+class ResolveGalleryAccessRequestBody(BaseModel):
+    approve: bool
+
+
+class DeviceTokenRequest(BaseModel):
+    token: str
+    platform: str | None = None
 
 PROFILE_PHOTOS_DIR = (
     Path(__file__).resolve().parent.parent
@@ -764,10 +798,12 @@ def createProjectGallery(
     return galleryToResponse(gallery)
 
 
-# update is enabled in gallery
+
 @router.patch("/projects/{project_id}/gallery")
-def updatePrjectGalleryStatus(
-    project_id: int, request: GalleryStatusUpdate, user=Depends(getCurrentLocalUser)
+def updateProjectGalleryStatus(
+    project_id: int,
+    request: GalleryStatusUpdate,
+    user=Depends(getCurrentLocalUser),
 ):
     gallery = getGalleryByProjectId(project_id)
 
@@ -777,34 +813,55 @@ def updatePrjectGalleryStatus(
             detail="Client gallery not found for this project",
         )
 
+    gallery_id = gallery[0]
+
+    if not isGalleryOwner(
+        gallery_id=gallery_id,
+        user_id=user["id"],
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Only gallery Owners can change gallery status",
+        )
+
     updated = setGalleryEnabled(
-        gallery_id=gallery[0],
+        gallery_id=gallery_id,
         is_enabled=request.is_enabled,
     )
+
+    if not updated:
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to update gallery status",
+        )
 
     gallery = getGalleryByProjectId(project_id)
 
     return galleryToResponse(gallery)
 
 
+
 @router.post("/projects/{project_id}/gallery/members")
 def shareProjectGallery(
-    project_id: int, request: ShareGalleryRequest, user=Depends(getCurrentLocalUser)
+    project_id: int,
+    request: ShareGalleryRequest,
+    user=Depends(getCurrentLocalUser),
 ):
-
     gallery = getGalleryByProjectId(project_id)
 
     if gallery is None:
         raise HTTPException(
-            status_code=404, detail="Client gallery not found for this project"
+            status_code=404,
+            detail="Client gallery not found for this project",
         )
 
     gallery_id = gallery[0]
     current_user_id = user["id"]
 
-    if not isGalleryOwner(gallery_id=gallery_id, user_id=current_user_id):
+    if not isGalleryOwner(gallery_id, current_user_id):
         raise HTTPException(
-            status_code=403, detail="Only gallery owner can manager access"
+            status_code=403,
+            detail="Only gallery Owners can manage access",
         )
 
     email = request.email.strip().lower()
@@ -812,31 +869,92 @@ def shareProjectGallery(
     if email.count("@") != 1 or "." not in email.rsplit("@", 1)[1]:
         raise HTTPException(
             status_code=422,
-            details="Please provide a valid email address",
+            detail="Please provide a valid email address",
         )
 
     current_email = (user.get("email") or "").strip().lower()
 
     if email == current_email and request.role != "owner":
         raise HTTPException(
-            status_code=400, detail="You can't downgrade your own Owner access here"
+            status_code=400,
+            detail="You cannot downgrade your own Owner access here",
         )
 
-    member = addOrUpdatGalleryMember(
+    # Record the invitation first.
+    invitation = createGalleryInvitation(
         gallery_id=gallery_id,
         email=email,
         role=request.role,
         invited_by_user_id=current_user_id,
     )
 
+    # Find an existing local account. Email verification is not
+    # checked at this stage, as requested.
+    connection = getConnection()
+
+    try:
+        cursor = connection.cursor()
+        cursor.execute(
+            """
+            SELECT id
+            FROM users
+            WHERE email COLLATE NOCASE = ?
+            LIMIT 1
+            """,
+            (email,),
+        )
+        existing_user = cursor.fetchone()
+
+        if existing_user is not None:
+            invited_user_id = existing_user[0]
+
+            # Registered users receive access immediately.
+            member = addOrUpdatGalleryMember(
+                gallery_id=gallery_id,
+                email=email,
+                role=request.role,
+                invited_by_user_id=current_user_id,
+            )
+
+            cursor.execute(
+                """
+                UPDATE gallery_invitations
+                SET invited_user_id = ?,
+                    status = 'accepted',
+                    updated_at_utc = ?
+                WHERE id = ?
+                """,
+                (
+                    invited_user_id,
+                    datetime.now(timezone.utc).isoformat(),
+                    invitation["id"],
+                ),
+            )
+            connection.commit()
+
+            return {
+                "success": True,
+                "invitation": {
+                    **invitation,
+                    "invited_user_id": invited_user_id,
+                    "status": "accepted",
+                },
+                "member": member,
+                "access_granted": True,
+            }
+
+    finally:
+        connection.close()
+
+    # The email has no existing local account, so do not create
+    # a membership yet.
     return {
         "success": True,
-        "member": {
-            "email": member["email"],
-            "role": member["role"],
-            "account_found": member["user_id"] is not None,
-        },
+        "invitation": invitation,
+        "access_granted": False,
+        "message": "Invitation saved. Access will be available after the user registers.",
     }
+
 
 
 @router.get("/my-galleries")
@@ -1213,4 +1331,382 @@ def deleteProjectGalleryMember(
         "success": True,
         "message": "Gallery member removed successfully",
         "removed_member": result["member"],
+    }
+
+
+def _requireGalleryOwnerForProject(project_id: int, user_id: int) -> int:
+    """Return the gallery ID after verifying the current user is an Owner."""
+    gallery = getGalleryByProjectId(project_id)
+
+    if gallery is None:
+        raise HTTPException(status_code=404, detail="Gallery not found")
+
+    gallery_id = gallery[0]
+
+    if not isGalleryOwner(gallery_id, user_id):
+        raise HTTPException(
+            status_code=403,
+            detail="Only gallery Owners can perform this action",
+        )
+
+    return gallery_id
+
+
+def _getGalleryOwnerUserIds(gallery_id: int) -> list[int]:
+    """Get local user IDs of all current gallery Owners."""
+    connection = getConnection()
+
+    try:
+        cursor = connection.cursor()
+        cursor.execute(
+            """
+            SELECT user_id
+            FROM client_gallery_members
+            WHERE gallery_id = ?
+              AND role = 'owner'
+              AND user_id IS NOT NULL
+            """,
+            (gallery_id,),
+        )
+        return list({row[0] for row in cursor.fetchall()})
+
+    finally:
+        connection.close()
+
+
+def _notifyGalleryOwners(
+    gallery_id: int,
+    notification_type: str,
+    title: str,
+    body: str,
+    data: dict,
+):
+    """Create an in-app notification for each Owner."""
+    for owner_id in _getGalleryOwnerUserIds(gallery_id):
+        createUserNotification(
+            user_id=owner_id,
+            notification_type=notification_type,
+            title=title,
+            body=body,
+            data=data,
+        )
+
+
+# ---------------------------------------------------------
+# SHARE LINKS
+# ---------------------------------------------------------
+
+@router.post("/projects/{project_id}/gallery/share-links")
+def createProjectGalleryShareLink(
+    project_id: int,
+    request: CreateGalleryShareLinkRequest,
+    user=Depends(getCurrentLocalUser),
+):
+    gallery_id = _requireGalleryOwnerForProject(project_id, user["id"])
+
+    try:
+        result = createGalleryShareLink(
+            gallery_id=gallery_id,
+            created_by_user_id=user["id"],
+            expires_at_utc=request.expires_at_utc,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+
+    if result["status"] == "gallery_not_found":
+        raise HTTPException(status_code=404, detail="Gallery not found")
+
+    return {
+        "success": True,
+        "share_link": result,
+    }
+
+
+@router.get("/projects/{project_id}/gallery/share-links")
+def listProjectGalleryShareLinks(
+    project_id: int,
+    user=Depends(getCurrentLocalUser),
+):
+    gallery_id = _requireGalleryOwnerForProject(project_id, user["id"])
+
+    return {
+        "success": True,
+        "share_links": getGalleryShareLinks(gallery_id),
+    }
+
+
+@router.delete(
+    "/projects/{project_id}/gallery/share-links/{share_link_id}"
+)
+def deleteProjectGalleryShareLink(
+    project_id: int,
+    share_link_id: int,
+    user=Depends(getCurrentLocalUser),
+):
+    gallery_id = _requireGalleryOwnerForProject(project_id, user["id"])
+
+    revoked = revokeGalleryShareLink(
+        gallery_id=gallery_id,
+        share_link_id=share_link_id,
+    )
+
+    if not revoked:
+        raise HTTPException(
+            status_code=404,
+            detail="Share link not found or already revoked",
+        )
+
+    return {
+        "success": True,
+        "message": "Share link revoked. Existing requests and memberships are unchanged.",
+    }
+
+
+# ---------------------------------------------------------
+# ACCESS REQUESTS
+# ---------------------------------------------------------
+
+@router.post("/gallery/share-links/{token}/requests")
+def requestGalleryAccess(
+    token: str,
+    user=Depends(getCurrentLocalUser),
+):
+    try:
+        result = createGalleryAccessRequest(
+            token=token,
+            requester_user_id=user["id"],
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+    error_messages = {
+        "invalid_link": (404, "Share link not found"),
+        "link_revoked": (410, "This share link has been revoked"),
+        "link_expired": (410, "This share link has expired"),
+        "gallery_unavailable": (404, "Gallery is unavailable"),
+        "already_member": (409, "You already have gallery access"),
+    }
+
+    if result["status"] in error_messages:
+        status_code, message = error_messages[result["status"]]
+        raise HTTPException(status_code=status_code, detail=message)
+
+    if result["status"] == "created":
+        _notifyGalleryOwners(
+            gallery_id=result["gallery_id"],
+            notification_type="gallery_access_request",
+            title="New gallery access request",
+            body=f"{user.get('email') or 'A user'} requested gallery access.",
+            data={
+                "gallery_id": result["gallery_id"],
+                "request_id": result["id"],
+            },
+        )
+
+    return {
+        "success": True,
+        "request": result,
+    }
+
+
+@router.get("/projects/{project_id}/gallery/access-requests")
+def listProjectGalleryAccessRequests(
+    project_id: int,
+    status: str | None = None,
+    user=Depends(getCurrentLocalUser),
+):
+    gallery_id = _requireGalleryOwnerForProject(project_id, user["id"])
+
+    try:
+        requests = getGalleryAccessRequests(
+            gallery_id=gallery_id,
+            status=status,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+
+    return {
+        "success": True,
+        "gallery_id": gallery_id,
+        "requests": requests,
+    }
+
+
+@router.post(
+    "/projects/{project_id}/gallery/access-requests/{request_id}/decision"
+)
+def decideProjectGalleryAccessRequest(
+    project_id: int,
+    request_id: int,
+    request: ResolveGalleryAccessRequestBody,
+    user=Depends(getCurrentLocalUser),
+):
+    gallery_id = _requireGalleryOwnerForProject(project_id, user["id"])
+
+    result = resolveGalleryAccessRequest(
+        gallery_id=gallery_id,
+        request_id=request_id,
+        owner_user_id=user["id"],
+        approve=request.approve,
+    )
+
+    if result["status"] == "request_not_found":
+        raise HTTPException(status_code=404, detail="Access request not found")
+
+    if result["status"] == "requester_not_found":
+        raise HTTPException(status_code=404, detail="Requester account not found")
+
+    if result["status"] == "request_already_resolved":
+        raise HTTPException(
+            status_code=409,
+            detail="This access request has already been resolved",
+        )
+
+    decision = result["decision"]
+
+    createUserNotification(
+        user_id=result["requester_user_id"],
+        notification_type=f"gallery_access_{decision}",
+        title=(
+            "Gallery access approved"
+            if decision == "approved"
+            else "Gallery access request declined"
+        ),
+        body=(
+            "Your gallery access request was approved."
+            if decision == "approved"
+            else "Your gallery access request was declined."
+        ),
+        data={
+            "gallery_id": gallery_id,
+            "request_id": request_id,
+            "decision": decision,
+        },
+    )
+
+    return {
+        "success": True,
+        "request": result,
+    }
+
+
+# ---------------------------------------------------------
+# INVITATIONS
+# ---------------------------------------------------------
+
+@router.get("/projects/{project_id}/gallery/invitations")
+def listProjectGalleryInvitations(
+    project_id: int,
+    user=Depends(getCurrentLocalUser),
+):
+    gallery_id = _requireGalleryOwnerForProject(project_id, user["id"])
+
+    return {
+        "success": True,
+        "invitations": getGalleryInvitations(gallery_id),
+    }
+
+
+@router.delete(
+    "/projects/{project_id}/gallery/invitations/{invitation_id}"
+)
+def deleteProjectGalleryInvitation(
+    project_id: int,
+    invitation_id: int,
+    user=Depends(getCurrentLocalUser),
+):
+    gallery_id = _requireGalleryOwnerForProject(project_id, user["id"])
+
+    revoked = revokeGalleryInvitation(
+        gallery_id=gallery_id,
+        invitation_id=invitation_id,
+    )
+
+    if not revoked:
+        raise HTTPException(
+            status_code=404,
+            detail="Pending invitation not found",
+        )
+
+    return {
+        "success": True,
+        "message": "Invitation revoked",
+    }
+
+
+# ---------------------------------------------------------
+# DEVICE TOKENS
+# ---------------------------------------------------------
+
+@router.post("/notifications/device-token")
+def registerMyDeviceToken(
+    request: DeviceTokenRequest,
+    user=Depends(getCurrentLocalUser),
+):
+    try:
+        registerDeviceToken(
+            user_id=user["id"],
+            token=request.token,
+            platform=request.platform,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+
+    return {"success": True}
+
+
+@router.delete("/notifications/device-token")
+def unregisterMyDeviceToken(
+    request: DeviceTokenRequest,
+    user=Depends(getCurrentLocalUser),
+):
+    removed = removeDeviceToken(
+        user_id=user["id"],
+        token=request.token,
+    )
+
+    return {
+        "success": True,
+        "removed": removed,
+    }
+
+
+# ---------------------------------------------------------
+# IN-APP NOTIFICATIONS
+# ---------------------------------------------------------
+
+@router.get("/notifications")
+def listMyNotifications(
+    limit: int = 50,
+    user=Depends(getCurrentLocalUser),
+):
+    return {
+        "success": True,
+        "notifications": getUserNotifications(
+            user_id=user["id"],
+            limit=limit,
+        ),
+    }
+
+
+@router.patch("/notifications/{notification_id}/read")
+def markMyNotificationRead(
+    notification_id: int,
+    user=Depends(getCurrentLocalUser),
+):
+    updated = markUserNotificationRead(
+        user_id=user["id"],
+        notification_id=notification_id,
+    )
+
+    if not updated:
+        raise HTTPException(
+            status_code=404,
+            detail="Notification not found or already read",
+        )
+
+    return {
+        "success": True,
+        "notification_id": notification_id,
+        "read": True,
     }

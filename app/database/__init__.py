@@ -54,3 +54,22 @@ from .gallery_db import (
     updateGalleryMemberRole,
     removeGalleryMember,
 )
+
+from .sharing_db import (
+    createGalleryShareLink,
+    getGalleryShareLink,
+    getGalleryShareLinks,
+    revokeGalleryShareLink,
+    createGalleryAccessRequest,
+    getGalleryAccessRequests,
+    resolveGalleryAccessRequest,
+    createGalleryInvitation,
+    getGalleryInvitations,
+    revokeGalleryInvitation,
+    registerDeviceToken,
+    removeDeviceToken,
+    createUserNotification,
+    getUserNotifications,
+    markUserNotificationRead,
+    linkPendingGalleryInvitationsForUser
+)

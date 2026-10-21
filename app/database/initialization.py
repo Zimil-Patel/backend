@@ -202,19 +202,158 @@ def initializeDatabase():
     # Save all table changes.
     connection.commit()
 
-    cursor.execute("PRAGMA table_info(users)")
+    
+    # ---------------------------------------------------------
+    # GALLERY SHARING AND NOTIFICATIONS
+    # ---------------------------------------------------------
 
-    existing_cols = {
-        row[1] for row in cursor.fetchall()
-    }
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS gallery_share_links (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            gallery_id INTEGER NOT NULL,
+            token TEXT NOT NULL UNIQUE,
+            created_by_user_id INTEGER NOT NULL,
+            expires_at_utc TEXT NOT NULL,
+            revoked_at_utc TEXT,
+            created_at_utc TEXT NOT NULL,
 
-    if "photo_url" not in existing_cols:
-        cursor.execute(
-            """
-            ALTER TABLE users
-            ADD COLUMN photo_url TEXT
-            """
+            FOREIGN KEY (gallery_id)
+                REFERENCES client_galleries(id)
+                ON DELETE CASCADE,
+
+            FOREIGN KEY (created_by_user_id)
+                REFERENCES users(id)
+                ON DELETE RESTRICT
         )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS gallery_access_requests (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            share_link_id INTEGER NOT NULL,
+            gallery_id INTEGER NOT NULL,
+            requester_user_id INTEGER NOT NULL,
+            status TEXT NOT NULL DEFAULT 'pending'
+                CHECK (status IN (
+                    'pending', 'approved', 'rejected'
+                )),
+            created_at_utc TEXT NOT NULL,
+            resolved_at_utc TEXT,
+            resolved_by_user_id INTEGER,
+
+            FOREIGN KEY (share_link_id)
+                REFERENCES gallery_share_links(id)
+                ON DELETE CASCADE,
+
+            FOREIGN KEY (gallery_id)
+                REFERENCES client_galleries(id)
+                ON DELETE CASCADE,
+
+            FOREIGN KEY (requester_user_id)
+                REFERENCES users(id)
+                ON DELETE CASCADE,
+
+            FOREIGN KEY (resolved_by_user_id)
+                REFERENCES users(id)
+                ON DELETE SET NULL
+        )
+    """)
+
+    # One pending request per user per gallery.
+    # Repeated requests should return the existing pending request.
+    cursor.execute("""
+        CREATE UNIQUE INDEX IF NOT EXISTS
+            uq_pending_gallery_access_request
+        ON gallery_access_requests (
+            gallery_id,
+            requester_user_id
+        )
+        WHERE status = 'pending'
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS gallery_invitations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            gallery_id INTEGER NOT NULL,
+            email TEXT NOT NULL COLLATE NOCASE,
+            role TEXT NOT NULL
+                CHECK (role IN ('owner', 'viewer')),
+            invited_by_user_id INTEGER NOT NULL,
+            invited_user_id INTEGER,
+            status TEXT NOT NULL DEFAULT 'pending'
+                CHECK (status IN (
+                    'pending', 'accepted', 'revoked'
+                )),
+            created_at_utc TEXT NOT NULL,
+            updated_at_utc TEXT NOT NULL,
+
+            UNIQUE (gallery_id, email),
+
+            FOREIGN KEY (gallery_id)
+                REFERENCES client_galleries(id)
+                ON DELETE CASCADE,
+
+            FOREIGN KEY (invited_by_user_id)
+                REFERENCES users(id)
+                ON DELETE RESTRICT,
+
+            FOREIGN KEY (invited_user_id)
+                REFERENCES users(id)
+                ON DELETE SET NULL
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS device_tokens (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            token TEXT NOT NULL UNIQUE,
+            platform TEXT,
+            created_at_utc TEXT NOT NULL,
+            updated_at_utc TEXT NOT NULL,
+
+            FOREIGN KEY (user_id)
+                REFERENCES users(id)
+                ON DELETE CASCADE
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_notifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            notification_type TEXT NOT NULL,
+            title TEXT NOT NULL,
+            body TEXT NOT NULL,
+            data_json TEXT,
+            created_at_utc TEXT NOT NULL,
+            read_at_utc TEXT,
+
+            FOREIGN KEY (user_id)
+                REFERENCES users(id)
+                ON DELETE CASCADE
+        )
+    """)
+
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS
+            idx_gallery_access_requests_pending
+        ON gallery_access_requests (
+            gallery_id, status, created_at_utc
+        )
+    """)
+
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS
+            idx_user_notifications_unread
+        ON user_notifications (
+            user_id, read_at_utc, created_at_utc
+        )
+    """)
+
+    # Persist all schema changes, including the photo_url migration.
+    connection.commit()
+
 
     # Close the database connection.
     connection.close()

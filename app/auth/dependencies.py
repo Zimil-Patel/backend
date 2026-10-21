@@ -3,6 +3,7 @@ from firebase_admin import auth
 from fastapi import Depends
 from app.database.user_db import syncUser
 from app.database.gallery_db import linkPendingGalleryInvitations
+from app.database.sharing_db import linkPendingGalleryInvitationsForUser
 
 def getCurrentFirebaseUser(authorization: str | None = Header(default = None)):
     if authorization is None:
@@ -56,5 +57,10 @@ def getCurrentLocalUser(
 
     if email and email.strip():
         linkPendingGalleryInvitations(user_id=user["id"],email=email)
+
+        linkPendingGalleryInvitationsForUser(
+            user_id=user["id"],
+            email=email,
+        )
 
     return user
