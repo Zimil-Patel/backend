@@ -1,3 +1,5 @@
 /.venv
 credentials/
 data/
+__pycache__/
+*.py[cod]
