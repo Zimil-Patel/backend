@@ -31,6 +31,8 @@ def getCurrentFirebaseUser(authorization: str | None = Header(default = None)):
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
 
+
+
 def getCurrentLocalUser(
     firebase_user=Depends(getCurrentFirebaseUser),
 ):
@@ -61,6 +63,25 @@ def getCurrentLocalUser(
         linkPendingGalleryInvitationsForUser(
             user_id=user["id"],
             email=email,
+        )
+
+    return user
+
+
+def requireAdmin(
+    user=Depends(getCurrentLocalUser),
+):
+    """
+    Allow access only to platform administrators.
+
+    The admin flag is read from the local database
+    through the authenticated user record.
+    """
+
+    if not user.get("is_admin", False):
+        raise HTTPException(
+            status_code=403,
+            detail="Platform administrator access required",
         )
 
     return user

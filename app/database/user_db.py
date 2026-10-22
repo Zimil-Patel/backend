@@ -24,6 +24,7 @@ def getUserByFirebaseUid(firebase_uid: str):
                 last_name,
                 email,
                 email_verified,
+                is_admin,
                 mobile_number,
                 photo_url,
                 created_at,
@@ -46,16 +47,16 @@ def getUserByFirebaseUid(firebase_uid: str):
                 "last_name": row[3],
                 "email": row[4],
                 "email_verified": bool(row[5]),
-                "mobile_number": row[6],
-                "photo_url": row[7],
-                "created_at": row[8],
-                "updated_at": row[9],
+                "is_admin": bool(row[6]),
+                "mobile_number": row[7],
+                "photo_url": row[8],
+                "created_at": row[9],
+                "updated_at": row[10],
             }
 
     finally:
         connection.close()
     
-
 
 def createUser(
     firebase_uid: str,

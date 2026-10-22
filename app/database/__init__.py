@@ -36,7 +36,7 @@ from .user_db import (
     createUser,
     updateUser,
     syncUser,
-    updateUserPhotoUrl
+    updateUserPhotoUrl,
 )
 
 from .gallery_db import (

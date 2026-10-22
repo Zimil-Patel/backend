@@ -27,52 +27,6 @@ def initializeDatabase():
     )
 
     # ---------------------------------------------------------
-    # GALLERIES
-    # ---------------------------------------------------------
-    cursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS client_galleries(
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            project_id INTEGER NOT NULL UNIQUE,
-            share_token TEXT NOT NULL UNIQUE,
-            is_enabled INTEGER NOT NULL DEFAULT 1,
-            created_by_user_id INTEGER,
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL,
-            FOREIGN KEY (project_id) 
-                REFERENCES projects(id)
-                ON DELETE CASCADE
-        )"""
-    )
-
-    # ---------------------------------------------------------
-    # GALLERY MENBERS
-    # ---------------------------------------------------------
-    cursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS client_gallery_members (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            gallery_id INTEGER NOT NULL,
-            email TEXT NOT NULL COLLATE NOCASE,
-            user_id INTEGER,
-            role TEXT NOT NULL DEFAULT 'viewer'
-                CHECK (role IN ('owner', 'viewer')),
-            invited_by_user_id INTEGER NOT NULL,
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL,
-            UNIQUE (gallery_id, email),
-
-            FOREIGN KEY (user_id)
-                REFERENCES users(id)
-                ON DELETE SET NULL,
-
-            FOREIGN KEY (invited_by_user_id)
-                REFERENCES users(id)
-                ON DELETE RESTRICT
-        )"""
-    )
-
-    # ---------------------------------------------------------
     # EVENTS
     # ---------------------------------------------------------
 
@@ -177,6 +131,11 @@ def initializeDatabase():
         """
     )
 
+    # ---------------------------------------------------------
+    # USERS
+    # ---------------------------------------------------------
+
+
     cursor.execute(
     """
     CREATE TABLE IF NOT EXISTS users (
@@ -202,6 +161,67 @@ def initializeDatabase():
     # Save all table changes.
     connection.commit()
 
+    cursor.execute("PRAGMA table_info(users)")
+    user_columns = {
+        row[1] for row in cursor.fetchall()
+    }
+
+    if "is_admin" not in user_columns:
+        cursor.execute(
+            """
+            ALTER TABLE users
+            ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0
+            """
+        )
+
+
+    # ---------------------------------------------------------
+    # GALLERIES
+    # ---------------------------------------------------------
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS client_galleries(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id INTEGER NOT NULL UNIQUE,
+            share_token TEXT NOT NULL UNIQUE,
+            is_enabled INTEGER NOT NULL DEFAULT 1,
+            created_by_user_id INTEGER,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY (project_id) 
+                REFERENCES projects(id)
+                ON DELETE CASCADE
+        )"""
+    )
+
+
+    # ---------------------------------------------------------
+    # GALLERY MENBERS
+    # ---------------------------------------------------------
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS client_gallery_members (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            gallery_id INTEGER NOT NULL,
+            email TEXT NOT NULL COLLATE NOCASE,
+            user_id INTEGER,
+            role TEXT NOT NULL DEFAULT 'viewer'
+                CHECK (role IN ('owner', 'viewer')),
+            invited_by_user_id INTEGER NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            UNIQUE (gallery_id, email),
+
+            FOREIGN KEY (user_id)
+                REFERENCES users(id)
+                ON DELETE SET NULL,
+
+            FOREIGN KEY (invited_by_user_id)
+                REFERENCES users(id)
+                ON DELETE RESTRICT
+        )"""
+    )
+
     
     # ---------------------------------------------------------
     # GALLERY SHARING AND NOTIFICATIONS
@@ -226,6 +246,7 @@ def initializeDatabase():
                 ON DELETE RESTRICT
         )
     """)
+
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS gallery_access_requests (

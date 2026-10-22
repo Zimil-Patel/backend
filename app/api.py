@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse
 from app.database import getConnection
 from app.services.selfie_service import searchSelfie
 
-from app.auth.dependencies import getCurrentLocalUser
+from app.auth.dependencies import (getCurrentLocalUser, requireAdmin)
 from app.database.user_db import updateUserPhotoUrl
 from app.services.image_service import saveProfilePhoto
 from fastapi import Depends
@@ -96,10 +96,141 @@ def requireGalleryPhotoAccess(project_id: int, user_id: int):
     if role is None:
         raise HTTPException(status_code=404, detail="Gallery not found or unavailable")
 
-    if not bool(gallery[3]) and role != "owner":
-        raise HTTPException(status_code=404, detail="Gallery not found or unavailable")
+    
+    # Disabled galleries are inaccessible to everyone,
+    # including gallery Owners.
+    if not bool(gallery[3]):
+        raise HTTPException(
+            status_code=404,
+            detail="Gallery not found or unavailable",
+        )
+
 
     return role
+
+
+
+@router.get("/admin/projects")
+def getAdminProjects(
+    user=Depends(requireAdmin),
+):
+    """
+    Return every project and its gallery status.
+    Platform Admins can see disabled galleries too.
+    """
+
+    connection = getConnection()
+
+    try:
+        cursor = connection.cursor()
+
+        cursor.execute(
+            """
+            SELECT
+                p.id,
+                p.name,
+                p.created_at,
+                g.id,
+                g.is_enabled,
+                g.created_at,
+                g.updated_at
+            FROM projects AS p
+            LEFT JOIN client_galleries AS g
+                ON g.project_id = p.id
+            ORDER BY p.id DESC
+            """
+        )
+
+        rows = cursor.fetchall()
+
+    finally:
+        connection.close()
+
+    return {
+        "success": True,
+        "projects": [
+            {
+                "id": row[0],
+                "name": row[1],
+                "created_at": row[2],
+                "gallery_id": row[3],
+                "is_enabled": (
+                    bool(row[4])
+                    if row[4] is not None
+                    else None
+                ),
+                "gallery_created_at": row[5],
+                "gallery_updated_at": row[6],
+            }
+            for row in rows
+        ],
+    }
+
+
+@router.patch("/admin/projects/{project_id}/gallery")
+def updateAdminGalleryStatus(
+    project_id: int,
+    request: GalleryStatusUpdate,
+    user=Depends(requireAdmin),
+):
+    """
+    Enable or disable a project's gallery.
+    Only platform Admins can use this endpoint.
+    """
+
+    # Confirm that the project exists.
+    connection = getConnection()
+
+    try:
+        cursor = connection.cursor()
+
+        cursor.execute(
+            """
+            SELECT id
+            FROM projects
+            WHERE id = ?
+            """,
+            (project_id,),
+        )
+
+        project = cursor.fetchone()
+
+    finally:
+        connection.close()
+
+    if project is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Project not found",
+        )
+
+    # Find the gallery associated with this project.
+    gallery = getGalleryByProjectId(project_id)
+
+    if gallery is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Gallery not found for this project",
+        )
+
+    # Update the gallery without requiring gallery Owner access.
+    updated = setGalleryEnabled(
+        gallery_id=gallery[0],
+        is_enabled=request.is_enabled,
+    )
+
+    if not updated:
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to update gallery status",
+        )
+
+    return {
+        "success": True,
+        "project_id": project_id,
+        "gallery_id": gallery[0],
+        "is_enabled": request.is_enabled,
+    }
 
 
 @router.get("/projects/{project_id}/favourites")
