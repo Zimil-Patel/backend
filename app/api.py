@@ -102,6 +102,65 @@ def requireGalleryPhotoAccess(project_id: int, user_id: int):
     return role
 
 
+@router.get("/projects/{project_id}/favourites")
+def getProjectFavouritePhotos(
+    project_id: int,
+    user=Depends(getCurrentLocalUser),
+):
+    """
+    Return all favourited photos in a project.
+    Only gallery Owners can access this collection.
+    """
+
+    # Enforce Owner permissions on the backend.
+    _requireGalleryOwnerForProject(
+        project_id=project_id,
+        user_id=user["id"],
+    )
+
+    connection = getConnection()
+
+    try:
+        cursor = connection.cursor()
+
+        cursor.execute(
+            """
+            SELECT
+                photos.id,
+                photos.filename,
+                photos.status,
+                photos.created_at,
+                photos.height,
+                photos.width,
+                photos.is_favourite
+            FROM photos
+            JOIN events
+                ON events.id = photos.event_id
+            WHERE events.project_id = ?
+              AND photos.is_favourite = 1
+            ORDER BY photos.id ASC
+            """,
+            (project_id,),
+        )
+
+        rows = cursor.fetchall()
+
+    finally:
+        connection.close()
+
+    return [
+        {
+            "id": row[0],
+            "filename": row[1],
+            "status": row[2],
+            "created_at": row[3],
+            "height": row[4],
+            "width": row[5],
+            "is_favourite": row[6],
+        }
+        for row in rows
+    ]
+
 @router.get("/")
 def apiHome():
     return {"message": "Stories By Parin's server is running"}

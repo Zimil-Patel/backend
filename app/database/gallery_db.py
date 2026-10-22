@@ -570,10 +570,10 @@ def getGalleriesForUser(user_id: int):
                 ON g.id = m.gallery_id
             INNER JOIN projects AS p
                 ON p.id = g.project_id
-            WHERE m.user_id = ?
+            WHERE m.user_id = ? AND g.is_enabled = ?
             ORDER BY g.created_at DESC, g.id DESC
             """,
-            (user_id,),
+            (user_id, 1),
         )
 
         rows = cursor.fetchall()
