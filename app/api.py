@@ -1478,6 +1478,36 @@ def getProjectGalleryMembers(
         "members": members,
     }
 
+
+@router.get("/admin/projects/{project_id}/gallery/members")
+def getAdminProjectGalleryMembers(
+    project_id: int,
+    user=Depends(requireAdmin),
+):
+    """
+    Return all members and pending invitations
+    for a project's gallery.
+    Only Platform Admins can access this endpoint.
+    """
+
+    gallery = getGalleryByProjectId(project_id)
+
+    if gallery is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Gallery not found",
+        )
+
+    members = getGalleryMembers(gallery[0])
+
+    return {
+        "success": True,
+        "project_id": project_id,
+        "gallery_id": gallery[0],
+        "members": members,
+        "total": len(members),
+    }
+
 @router.patch("/projects/{project_id}/gallery/members/{member_id}")
 def changeGalleryMemberRole(
     project_id: int,
@@ -1600,6 +1630,52 @@ def deleteProjectGalleryMember(
         raise HTTPException(
             status_code=409,
             detail="The last Owner cannot be removed",
+        )
+
+    return {
+        "success": True,
+        "message": "Gallery member removed successfully",
+        "removed_member": result["member"],
+    }
+
+
+@router.delete(
+    "/admin/projects/{project_id}/gallery/members/{member_id}"
+)
+def deleteAdminProjectGalleryMember(
+    project_id: int,
+    member_id: int,
+    user=Depends(requireAdmin),
+):
+    """
+    Remove a member or pending invitation from a gallery.
+    Platform Admins can remove any member, including the last Owner.
+    """
+
+    # Find the gallery associated with this project.
+    gallery = getGalleryByProjectId(project_id)
+
+    if gallery is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Gallery not found",
+        )
+
+    gallery_id = gallery[0]
+
+    # Admins can remove any membership without the normal
+    # self-removal and last-Owner restrictions.
+    result = removeGalleryMember(
+        gallery_id=gallery_id,
+        member_id=member_id,
+        current_user_id=user["id"],
+        admin_override=True,
+    )
+
+    if result["status"] == "not_found":
+        raise HTTPException(
+            status_code=404,
+            detail="Gallery member not found",
         )
 
     return {

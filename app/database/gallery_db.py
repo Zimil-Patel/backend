@@ -8,6 +8,7 @@ def removeGalleryMember(
     gallery_id: int,
     member_id: int,
     current_user_id: int,
+    admin_override: bool = False,
 ):
     """
     Remove a member or pending invitation from a gallery.
@@ -46,13 +47,15 @@ def removeGalleryMember(
             connection.rollback()
             return {"status": "not_found"}
 
-        # Don't allow the current Owner to remove themselves.
-        if member[3] == current_user_id:
+        if (
+            member[3] == current_user_id
+            and not admin_override
+        ):
             connection.rollback()
             return {"status": "self_removal"}
 
         # Protect the last Owner from being removed.
-        if member[4] == "owner":
+        if member[4] == "owner" and not admin_override:
             cursor.execute(
                 """
                 SELECT COUNT(*)
