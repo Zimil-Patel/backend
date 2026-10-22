@@ -233,6 +233,119 @@ def updateAdminGalleryStatus(
     }
 
 
+@router.get("/admin/users")
+def getAdminUsers(
+    user=Depends(requireAdmin),
+):
+    """
+    Return registered users for the Platform Admin dashboard.
+    Only Platform Admins can access this endpoint.
+    """
+
+    connection = getConnection()
+
+    try:
+        cursor = connection.cursor()
+
+        cursor.execute(
+            """
+            SELECT
+                id,
+                first_name,
+                last_name,
+                email,
+                is_admin,
+                photo_url
+            FROM users
+            ORDER BY first_name COLLATE NOCASE, email COLLATE NOCASE
+            """
+        )
+
+        rows = cursor.fetchall()
+
+        users = [
+            {
+                "id": row[0],
+                "first_name": row[1],
+                "last_name": row[2],
+                "email": row[3],
+                "is_admin": bool(row[4]),
+                "photo_url": row[5],
+            }
+            for row in rows
+        ]
+
+        return {
+            "success": True,
+            "users": users,
+            "total": len(users),
+        }
+
+    finally:
+        connection.close()
+
+
+@router.post("/admin/projects/{project_id}/gallery")
+def createAdminProjectGallery(
+    project_id: int,
+    user=Depends(requireAdmin),
+):
+    """
+    Create a gallery for an existing project.
+    Only platform Admins can use this endpoint.
+    """
+
+    connection = getConnection()
+
+    try:
+        cursor = connection.cursor()
+
+        cursor.execute(
+            """
+            SELECT id
+            FROM projects
+            WHERE id = ?
+            """,
+            (project_id,),
+        )
+
+        project = cursor.fetchone()
+
+    finally:
+        connection.close()
+
+    if project is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Project not found",
+        )
+
+    # Return the existing gallery instead of creating a duplicate.
+    gallery = getGalleryByProjectId(project_id)
+
+    if gallery is not None:
+        return galleryToResponse(gallery)
+
+    # Create the gallery and associate its creator with the
+    # current Admin account for audit/history purposes.
+    createGallery(
+        project_id=project_id,
+        created_by_user_id=user["id"],
+    )
+
+    gallery = getGalleryByProjectId(project_id)
+
+    if gallery is None:
+        raise HTTPException(
+            status_code=500,
+            detail="Gallery creation failed",
+        )
+
+    # Do not automatically make the Admin a gallery Owner.
+    # Platform Admin access is handled separately.
+    return galleryToResponse(gallery)
+
+
 @router.get("/projects/{project_id}/favourites")
 def getProjectFavouritePhotos(
     project_id: int,
@@ -948,47 +1061,6 @@ def galleryToResponse(gallery):
     }
 
 
-# create gallery
-@router.post("/projects/{project_id}/gallery")
-def createProjectGallery(
-    project_id: int,
-    user=Depends(getCurrentLocalUser),
-):
-
-    connection = getConnection()
-    cursor = connection.cursor()
-
-    cursor.execute(
-        """
-            SELECT id FROM
-            projects
-            WHERE id = ?
-        """,
-        (project_id,),
-    )
-
-    project = cursor.fetchone()
-    connection.close()
-
-    if project is None:
-        raise HTTPException(status_code=404, detail="Project not found")
-
-    gallery = getGalleryByProjectId(project_id)
-
-    if gallery is None:
-        createGallery(
-            project_id=project_id,
-            created_by_user_id=user["id"],
-        )
-
-        gallery = getGalleryByProjectId(project_id)
-
-        ensureGalleryCreatorIsOwner(gallery[0])
-
-    return galleryToResponse(gallery)
-
-
-
 @router.patch("/projects/{project_id}/gallery")
 def updateProjectGalleryStatus(
     project_id: int,
@@ -1045,14 +1117,25 @@ def shareProjectGallery(
             detail="Client gallery not found for this project",
         )
 
+
+
     gallery_id = gallery[0]
     current_user_id = user["id"]
 
-    if not isGalleryOwner(gallery_id, current_user_id):
+
+    is_gallery_owner = isGalleryOwner(
+        gallery_id,
+        current_user_id,
+    )
+
+    is_platform_admin = bool(user.get("is_admin", False))
+
+    if not is_gallery_owner and not is_platform_admin:
         raise HTTPException(
             status_code=403,
-            detail="Only gallery Owners can manage access",
+            detail="Only gallery Owners or platform Admins can manage access",
         )
+    
 
     email = request.email.strip().lower()
 
@@ -1064,7 +1147,9 @@ def shareProjectGallery(
 
     current_email = (user.get("email") or "").strip().lower()
 
-    if email == current_email and request.role != "owner":
+    if (is_gallery_owner
+        and email == current_email
+        and request.role != "owner"):
         raise HTTPException(
             status_code=400,
             detail="You cannot downgrade your own Owner access here",
